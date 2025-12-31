@@ -1,0 +1,1279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="RMInfantry_Complation_Vision.SLDASM">
+  <mujoco>
+    <compiler
+    	meshdir="../meshes/"
+    	balanceinertia="true"
+    	discardvisual="false" />
+  </mujoco>
+  
+  <link name="world"></link>
+  <joint name="floating_base_joint" type="floating">
+    <parent link="world"/>
+    <child link="base_link"/>
+  </joint>
+  
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.003111 0.0015208 0.10627"
+        rpy="0 0 0" />
+      <mass
+        value="9.774" />
+      <inertia
+        ixx="0.018047"
+        ixy="6.8169E-06"
+        ixz="-9.2205E-06"
+        iyy="0.05196"
+        iyz="1.6151E-05"
+        izz="0.05484" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.50196 0.50196 0.50196 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="left_front_hip_link">
+    <inertial>
+      <origin
+        xyz="0.032281 0.032438 0.011151"
+        rpy="0 0 0" />
+      <mass
+        value="0.2528" />
+      <inertia
+        ixx="0.00013252"
+        ixy="-5.8425E-19"
+        ixz="-0.00014865"
+        iyy="0.00064137"
+        iyz="3.8933E-18"
+        izz="0.00052206" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_front_hip_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.89804 0.91373 0.92549 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_front_hip_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_front_hip_joint"
+    type="continuous">
+    <origin
+      xyz="0.065 0.1423 0.127"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="left_front_hip_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="left_front_knee_link">
+    <inertial>
+      <origin
+        xyz="-0.089345 0.006 -0.086713"
+        rpy="0 0 0" />
+      <mass
+        value="0.21937" />
+      <inertia
+        ixx="0.00085145"
+        ixy="-3.8325E-18"
+        ixz="-0.00087832"
+        iyy="0.0018691"
+        iyz="-9.3363E-21"
+        izz="0.0010229" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_front_knee_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_front_knee_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_front_knee_joint"
+    type="continuous">
+    <origin
+      xyz="0.12968 0.0194 0.047199"
+      rpy="0 0 0" />
+    <parent
+      link="left_front_hip_link" />
+    <child
+      link="left_front_knee_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <!-- <link
+    name="left_chassis_wheel_site0_link">
+    <inertial>
+      <origin
+        xyz="-4.8229E-15 -0.0185 1.5266E-16"
+        rpy="0 0 0" />
+      <mass
+        value="0.0075775" />
+      <inertia
+        ixx="4.2365E-07"
+        ixy="-2.0727E-22"
+        ixz="2.036E-24"
+        iyy="7.6403E-07"
+        iyz="-2.9912E-22"
+        izz="4.2365E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_chassis_wheel_site0_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.77255 0.75294 0.73333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_chassis_wheel_site0_link.STL" />
+      </geometry>
+    </collision>
+  </link> -->
+  <!-- <joint
+    name="left_chassis_wheel_site0_joint"
+    type="continuous">
+    <origin
+      xyz="-0.19468 0.0245 -0.17534"
+      rpy="0 0 0" />
+    <parent
+      link="left_front_knee_link" />
+    <child
+      link="left_chassis_wheel_site0_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint> -->
+  <link
+    name="left_rear_hip_link">
+    <inertial>
+      <origin
+        xyz="-0.0369979002010859 0.0309982603546195 0.0127965807004653"
+        rpy="0 0 0" />
+      <mass
+        value="0.258169857475487" />
+      <inertia
+        ixx="0.000140702499108914"
+        ixy="3.36923885329177E-19"
+        ixz="0.000174370684953426"
+        iyy="0.000715454259986006"
+        iyz="-2.87113325481111E-18"
+        izz="0.00058595009125451" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_rear_hip_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.913725490196078 0.925490196078431 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_rear_hip_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_rear_hip_joint"
+    type="continuous">
+    <origin
+      xyz="-0.065 0.1423 0.127"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="left_rear_hip_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="left_rear_knee_link">
+    <inertial>
+      <origin
+        xyz="0.10163 0.02 -0.097327"
+        rpy="0 0 0" />
+      <mass
+        value="0.2214" />
+      <inertia
+        ixx="0.00094302"
+        ixy="-2.1222E-17"
+        ixz="0.00095354"
+        iyy="0.0021043"
+        iyz="-1.955E-17"
+        izz="0.0011666" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_rear_knee_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_rear_knee_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_rear_knee_joint"
+    type="continuous">
+    <origin
+      xyz="-0.12968 0.0309 0.047199"
+      rpy="0 0 0" />
+    <parent
+      link="left_rear_hip_link" />
+    <child
+      link="left_rear_knee_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="left_chassis_wheel_link">
+    <inertial>
+      <origin
+        xyz="-5.5954E-06 0.036068 -3.5474E-06"
+        rpy="0 0 0" />
+      <mass
+        value="0.52417" />
+      <inertia
+        ixx="0.0006003"
+        ixy="3.2833E-08"
+        ixz="1.2544E-08"
+        iyy="0.0011204"
+        iyz="-2.7525E-09"
+        izz="0.0006003" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_chassis_wheel_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_chassis_wheel_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_chassis_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="0.19468 0.013 -0.17534"
+      rpy="0 0 0" />
+    <parent
+      link="left_rear_knee_link" />
+    <child
+      link="left_chassis_wheel_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <!-- <link
+    name="left_chassis_wheel_site1_link">
+    <inertial>
+      <origin
+        xyz="1.7764E-17 -0.0057767 6.9389E-17"
+        rpy="0 0 0" />
+      <mass
+        value="0.0062643" />
+      <inertia
+        ixx="1.0607E-06"
+        ixy="3.9868E-23"
+        ixz="2.0336E-21"
+        iyy="1.6376E-06"
+        iyz="-5.0049E-22"
+        izz="1.0607E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_chassis_wheel_site1_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.64706 0.61961 0.58431 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_chassis_wheel_site1_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_chassis_wheel_site1_joint"
+    type="fixed">
+    <origin
+      xyz="0.19468 0.013 -0.17534"
+      rpy="0 0 0" />
+    <parent
+      link="left_rear_knee_link" />
+    <child
+      link="left_chassis_wheel_site1_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint> -->
+  <link
+    name="right_front_hip_link">
+    <inertial>
+      <origin
+        xyz="0.032281 -0.032438 0.011151"
+        rpy="0 0 0" />
+      <mass
+        value="0.2528" />
+      <inertia
+        ixx="0.00013252"
+        ixy="-2.9699E-18"
+        ixz="-0.00014865"
+        iyy="0.00064137"
+        iyz="3.4055E-18"
+        izz="0.00052206" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_front_hip_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_front_hip_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_front_hip_joint"
+    type="continuous">
+    <origin
+      xyz="0.065000010549327 -0.142300000000003 0.127000001012436"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_front_hip_link" />
+    <axis
+      xyz="0 -1 0" />
+  </joint>
+  <link
+    name="right_front_knee_link">
+    <inertial>
+      <origin
+        xyz="-0.089345 -0.006 -0.086713"
+        rpy="0 0 0" />
+      <mass
+        value="0.21937" />
+      <inertia
+        ixx="0.00085145"
+        ixy="1.8229E-18"
+        ixz="-0.00087832"
+        iyy="0.0018691"
+        iyz="1.675E-18"
+        izz="0.0010229" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_front_knee_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_front_knee_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_front_knee_joint"
+    type="continuous">
+    <origin
+      xyz="0.12968 -0.0194 0.047199"
+      rpy="0 0 0" />
+    <parent
+      link="right_front_hip_link" />
+    <child
+      link="right_front_knee_link" />
+    <axis
+      xyz="0 -1 0" />
+  </joint>
+  <!-- <link
+    name="right_chassis_wheel_site0_link">
+    <inertial>
+      <origin
+        xyz="-2.1837E-16 0.0185 -2.7756E-17"
+        rpy="0 0 0" />
+      <mass
+        value="0.0075775" />
+      <inertia
+        ixx="4.2365E-07"
+        ixy="5.1092E-22"
+        ixz="1.4914E-24"
+        iyy="7.6403E-07"
+        iyz="-3.2631E-22"
+        izz="4.2365E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_chassis_wheel_site0_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.77255 0.75294 0.73333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_chassis_wheel_site0_link.STL" />
+      </geometry>
+    </collision>
+  </link> -->
+  <!-- <joint
+    name="right_chassis_wheel_site0_joint"
+    type="fixed">
+    <origin
+      xyz="-0.19468 -0.0245 -0.17534"
+      rpy="0 0 0" />
+    <parent
+      link="right_front_knee_link" />
+    <child
+      link="right_chassis_wheel_site0_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint> -->
+  <link
+    name="right_rear_hip_link">
+    <inertial>
+      <origin
+        xyz="-0.036998 -0.030998 0.012797"
+        rpy="0 0 0" />
+      <mass
+        value="0.25817" />
+      <inertia
+        ixx="0.0001407"
+        ixy="-2.4611E-18"
+        ixz="0.00017437"
+        iyy="0.00071545"
+        iyz="-1.1802E-18"
+        izz="0.00058595" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_rear_hip_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.89804 0.91373 0.92549 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_rear_hip_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_rear_hip_joint"
+    type="continuous">
+    <origin
+      xyz="-0.065 -0.1423 0.127"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_rear_hip_link" />
+    <axis
+      xyz="0 -1 0" />
+  </joint>
+  <link
+    name="right_rear_knee_link">
+    <inertial>
+      <origin
+        xyz="0.10163 -0.02 -0.097327"
+        rpy="0 0 0" />
+      <mass
+        value="0.2214" />
+      <inertia
+        ixx="0.00094302"
+        ixy="-1.7521E-17"
+        ixz="0.00095354"
+        iyy="0.0021043"
+        iyz="-2.4388E-17"
+        izz="0.0011666" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_rear_knee_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_rear_knee_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_rear_knee_joint"
+    type="continuous">
+    <origin
+      xyz="-0.12968 -0.0309 0.047199"
+      rpy="0 0 0" />
+    <parent
+      link="right_rear_hip_link" />
+    <child
+      link="right_rear_knee_link" />
+    <axis
+      xyz="0 -1 0" />
+  </joint>
+  <link
+    name="right_chassis_wheel_link">
+    <inertial>
+      <origin
+        xyz="1.7764E-06 -0.036068 6.3825E-06"
+        rpy="0 0 0" />
+      <mass
+        value="0.52417" />
+      <inertia
+        ixx="0.00060029"
+        ixy="-1.2136E-08"
+        ixz="8.6961E-09"
+        iyy="0.0011204"
+        iyz="3.0631E-08"
+        izz="0.00060031" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_chassis_wheel_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_chassis_wheel_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_chassis_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="0.19468 -0.013 -0.17534"
+      rpy="0 0 0" />
+    <parent
+      link="right_rear_knee_link" />
+    <child
+      link="right_chassis_wheel_link" />
+    <axis
+      xyz="0 -1 0" />
+  </joint>
+  <!-- <link
+    name="right_chassis_wheel_site1_link">
+    <inertial>
+      <origin
+        xyz="-2.2678E-16 0.0057767 -2.7756E-17"
+        rpy="0 0 0" />
+      <mass
+        value="0.0062643" />
+      <inertia
+        ixx="1.0607E-06"
+        ixy="1.4226E-21"
+        ixz="-9.8601E-22"
+        iyy="1.6376E-06"
+        iyz="-4.2929E-22"
+        izz="1.0607E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_chassis_wheel_site1_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.64706 0.61961 0.58431 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_chassis_wheel_site1_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_chassis_wheel_site1_joint"
+    type="fixed">
+    <origin
+      xyz="0.19468 -0.013 -0.17534"
+      rpy="0 0 0" />
+    <parent
+      link="right_rear_knee_link" />
+    <child
+      link="right_chassis_wheel_site1_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint> -->
+  <link
+    name="gimbal_yaw_link">
+    <inertial>
+      <origin
+        xyz="0.0063949 0.01356 0.072584"
+        rpy="0 0 0" />
+      <mass
+        value="0.70223" />
+      <inertia
+        ixx="0.0011712"
+        ixy="3.0488E-07"
+        ixz="1.7288E-07"
+        iyy="0.00075986"
+        iyz="-0.00018026"
+        izz="0.00081056" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_yaw_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_yaw_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="gimbal_yaw_joint"
+    type="continuous">
+    <origin
+      xyz="0 0 0.179"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="gimbal_yaw_link" />
+    <axis
+      xyz="0 0 1" />
+  </joint>
+  <link
+    name="gimbal_pitch_motor_link">
+    <inertial>
+      <origin
+        xyz="-0.00079938 0.00028082 -0.00010689"
+        rpy="0 0 0" />
+      <mass
+        value="0.29161" />
+      <inertia
+        ixx="9.5868E-05"
+        ixy="1.2343E-08"
+        ixz="4.6016E-08"
+        iyy="0.00016404"
+        iyz="-4.8477E-07"
+        izz="0.000104" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_motor_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.89412 0.9098 0.92549 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_motor_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="gimbal_pitch_motor_joint"
+    type="continuous">
+    <origin
+      xyz="0 0.04735 0.068"
+      rpy="0 0 0" />
+    <parent
+      link="gimbal_yaw_link" />
+    <child
+      link="gimbal_pitch_motor_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="gimbal_pitch_motor_chrild1_link">
+    <inertial>
+      <origin
+        xyz="0 0.0025 0.031929"
+        rpy="0 0 0" />
+      <mass
+        value="0.013666" />
+      <inertia
+        ixx="7.9145E-06"
+        ixy="1.2294E-23"
+        ixz="1.6679E-21"
+        iyy="8.3333E-06"
+        iyz="1.7252E-21"
+        izz="4.7575E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_motor_chrild1_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.50196 0.50196 0.50196 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_motor_chrild1_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="gimbal_pitch_motor_chrild1_joint"
+    type="continuous">
+    <origin
+      xyz="-0.05 0.02585 0"
+      rpy="0 0 0" />
+    <parent
+      link="gimbal_pitch_motor_link" />
+    <child
+      link="gimbal_pitch_motor_chrild1_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="gimbal_pitch_motor_chrild2_link">
+    <inertial>
+      <origin
+        xyz="-1.90125692967058E-15 0.00695454545454546 -5.55111512312578E-17"
+        rpy="0 0 0" />
+      <mass
+        value="0.000259181393921158" />
+      <inertia
+        ixx="2.65469197905038E-09"
+        ixy="-8.32345721873143E-25"
+        ixz="-3.1833259621698E-25"
+        iyy="4.62955401783886E-09"
+        iyz="6.12280255373811E-26"
+        izz="2.65469197905038E-09" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_motor_chrild2_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.772549019607843 0.752941176470588 0.733333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_motor_chrild2_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="gimbal_pitch_motor_chrild2_joint"
+    type="fixed">
+    <origin
+      xyz="0 -0.00285 0.067"
+      rpy="0 0 0" />
+    <parent
+      link="gimbal_pitch_motor_chrild1_link" />
+    <child
+      link="gimbal_pitch_motor_chrild2_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="gimbal_pitch_link">
+    <inertial>
+      <origin
+        xyz="0.00570445411307587 -0.0357202631780137 0.0241584830663755"
+        rpy="0 0 0" />
+      <mass
+        value="1.26308074496479" />
+      <inertia
+        ixx="0.00113734474641569"
+        ixy="-6.04664308296285E-06"
+        ixz="-0.000210962920027997"
+        iyy="0.00190756636329975"
+        iyz="-1.26424750051048E-06"
+        izz="0.00229904338857953" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="gimbal_pitch_joint"
+    type="continuous">
+    <origin
+      xyz="0 0.043 0.135"
+      rpy="0 0 0" />
+    <parent
+      link="gimbal_yaw_link" />
+    <child
+      link="gimbal_pitch_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="left_frition_wheel_link">
+    <inertial>
+      <origin
+        xyz="-4.85722573273506E-16 -4.92661467177413E-16 -0.00963369941828784"
+        rpy="0 0 0" />
+      <mass
+        value="0.0352426065326721" />
+      <inertia
+        ixx="1.22538290554149E-05"
+        ixy="3.2156776745501E-08"
+        ixz="2.05157400208698E-20"
+        iyy="1.21074986152895E-05"
+        iyz="-3.31341520961207E-21"
+        izz="2.16795499210052E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_frition_wheel_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/left_frition_wheel_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_frition_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="0.07 -0.006 0.0161"
+      rpy="0 0 0" />
+    <parent
+      link="gimbal_pitch_link" />
+    <child
+      link="left_frition_wheel_link" />
+    <axis
+      xyz="0 0 1" />
+  </joint>
+  <link
+    name="right_frition_wheel_link">
+    <inertial>
+      <origin
+        xyz="-5.13478148889135E-16 -4.85722573273506E-16 -0.0096336994182879"
+        rpy="0 0 0" />
+      <mass
+        value="0.0352426065326721" />
+      <inertia
+        ixx="1.22538290554149E-05"
+        ixy="3.21567767455035E-08"
+        ixz="1.99356379167021E-20"
+        iyy="1.21074986152895E-05"
+        iyz="-5.55703725238919E-21"
+        izz="2.16795499210052E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_frition_wheel_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/right_frition_wheel_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_frition_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="0.07 -0.08 0.0161"
+      rpy="0 0 0" />
+    <parent
+      link="gimbal_pitch_link" />
+    <child
+      link="right_frition_wheel_link" />
+    <axis
+      xyz="0 0 1" />
+  </joint>
+  <!-- <link
+    name="gimbal_pitch_motor_site0_link">
+    <inertial>
+      <origin
+        xyz="6.93889390390723E-18 0 0"
+        rpy="0 0 0" />
+      <mass
+        value="0.00087673054502261" />
+      <inertia
+        ixx="1.63006126583329E-08"
+        ixy="-5.33266318612395E-24"
+        ixz="3.85293297626385E-25"
+        iyy="2.78537294153683E-08"
+        iyz="-8.5985756007964E-27"
+        izz="1.63006126583329E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_motor_site0_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/gimbal_pitch_motor_site0_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="gimbal_pitch_motor_site0_joint"
+    type="fixed">
+    <origin
+      xyz="-0.05 0.02735 0"
+      rpy="0 0 0" />
+    <parent
+      link="gimbal_pitch_link" />
+    <child
+      link="gimbal_pitch_motor_site0_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint> -->
+  <link
+    name="feeder_desk_link">
+    <inertial>
+      <origin
+        xyz="1.8898E-08 -8.1704E-09 -0.0047462"
+        rpy="0 0 0" />
+      <mass
+        value="0.069902" />
+      <inertia
+        ixx="7.3556E-05"
+        ixy="5.3205E-12"
+        ixz="1.851E-12"
+        iyy="7.3556E-05"
+        iyz="-2.29E-12"
+        izz="0.00014644" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/feeder_desk_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/feeder_desk_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="feeder_desk_joint"
+    type="continuous">
+    <origin
+      xyz="0 0 0.076"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="feeder_desk_link" />
+    <axis
+      xyz="0 0 1" />
+  </joint>
+</robot>
