@@ -12,6 +12,44 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(std_msgs REQUIRED)
+
+set(msg_files
+  # High Level Control MSG
+  "msg/HighLevelControl/JointCmd.msg"
+  "msg/HighLevelControl/JointState.msg"
+  "msg/HighLevelControl/ChassisJointCmd.msg"
+  "msg/HighLevelControl/ChassisJointState.msg"
+  "msg/HighLevelControl/GimbalJointCmd.msg"
+  "msg/HighLevelControl/GimbalJointState.msg"
+  "msg/HighLevelControl/ShootJointCmd.msg"
+  "msg/HighLevelControl/ShootJointState.msg"
+  # Low Level Control MSG
+  "msg/LowLevelControl/DJI/DjiMotorCmd.msg"
+  "msg/LowLevelControl/DJI/DjiMotorState.msg"
+  "msg/LowLevelControl/KTECH/KtechMotorCmd.msg"
+  "msg/LowLevelControl/KTECH/KtechMotorState.msg"
+  "msg/LowLevelControl/Motorevo/MotorevoMotorCmd.msg"
+  "msg/LowLevelControl/Motorevo/MotorevoMotorState.msg"
+
+  "msg/LowLevelControl/ChassisMotorCmd.msg"
+  "msg/LowLevelControl/ChassisMotorState.msg"
+  "msg/LowLevelControl/GimbalMotorCmd.msg"
+  "msg/LowLevelControl/GimbalMotorState.msg"
+  "msg/LowLevelControl/ShootMotorCmd.msg"
+  "msg/LowLevelControl/ShootMotorState.msg"
+
+  "msg/LowLevelControl/IMUState.msg"
+)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  ${msg_files}
+  DEPENDENCIES std_msgs
+)
+
+# install(DIRECTORY include/
+#   DESTINATION include/
+# )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
