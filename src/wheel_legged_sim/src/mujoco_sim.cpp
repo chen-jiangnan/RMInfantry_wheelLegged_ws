@@ -14,8 +14,13 @@
 
 // !!! hack code: make glfw_adapter.window_ public
 #include <cmath>
+#include <cstddef>
 #include <rclcpp/create_timer.hpp>
+#include <rclcpp/logging.hpp>
+#include <rclcpp/qos.hpp>
 #include <rclcpp/timer.hpp>
+#include <sensor_msgs/msg/detail/imu__struct.hpp>
+#include <wheel_legged_msgs/msg/detail/imu_state__struct.hpp>
 #define private public
 #include "glfw_adapter.h"
 #undef private
@@ -37,8 +42,13 @@
 #include "array_safety.h"
 #include "wheel_legged_sim/param.h"
 #include "ament_index_cpp/get_package_share_directory.hpp"
+#include "wheel_legged_sim/robot_sdk_bridge.hpp"
+#include "wheel_legged_sim/simulation_interfaces.hpp"
 
 #include "rclcpp/rclcpp.hpp"
+
+#include <thread>
+#include <atomic>
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
 
@@ -533,6 +543,10 @@ namespace
       } // release std::lock_guard<std::mutex>
     }
   }
+  
+  // 提供访问 m 和 d 的函数
+  mjModel* getMjModel() { return m; }
+  mjData* getMjData() { return d; }
 } // namespace
 
 //-------------------------------------- physics_thread --------------------------------------------
@@ -571,41 +585,7 @@ void PhysicsThread(mj::Simulate *sim, const char *filename)
   // exit(0);
 }
 
-// void *UnitreeSdk2BridgeThread(void *arg)
-// {
-//   // Wait for mujoco data
-//   while (true)
-//   {
-//     if (d)
-//     {
-//       std::cout << "Mujoco data is prepared" << std::endl;
-//       break;
-//     }
-//     usleep(500000);
-//   }
 
-//   unitree::robot::ChannelFactory::Instance()->Init(param::config.domain_id, param::config.interface);
-
-
-//   int body_id = mj_name2id(m, mjOBJ_BODY, "torso_link");
-//   if (body_id < 0) {
-//     body_id = mj_name2id(m, mjOBJ_BODY, "base_link");
-//   }
-//   param::config.band_attached_link = 6 * body_id;
-  
-//   std::unique_ptr<UnitreeSDK2BridgeBase> interface = nullptr;
-//   if (m->nu > NUM_MOTOR_IDL_GO) {
-//     interface = std::make_unique<G1Bridge>(m, d);
-//   } else {
-//     interface = std::make_unique<Go2Bridge>(m, d);
-//   }
-//   interface->start();
-  
-//   while (true)
-//   {
-//     sleep(1);
-//   }
-// }
 //------------------------------------------ main --------------------------------------------------
 
 // machinery for replacing command line error by a macOS dialog box when running under Rosetta
@@ -641,15 +621,201 @@ void user_key_cb(GLFWwindow* window, int key, int scancode, int act, int mods) {
 //=====================================================ROS2 NODE===========================================
 class MujocoSimNode : public rclcpp::Node {
 public:
-  MujocoSimNode(std::string name, mj::Simulate *sim) :Node(name){
+  MujocoSimNode(std::string name) :Node(name){
     RCLCPP_INFO(this->get_logger(), "%s节点已启动.", name.c_str());
-    sim_ptr_ = sim;
+
+    // 创建 chassisMotorState 发布者
+    chassis_motorState_publisher_ = this->create_publisher<wheel_legged_msgs::msg::ChassisJointState>(
+      "simulation/chassisMotorState", 10);
+    // 创建 chassisMotorCmd 订阅者  
+    chassis_motorCmd_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::ChassisJointCmd>(
+      "simulation/chassisMotorCmd", 10, 
+      std::bind(&MujocoSimNode::ChassisMotorCmd_callback, this, std::placeholders::_1));
+
+    // 创建 GimablMotorState 发布者
+    gimbal_motorState_publisher_ = this->create_publisher<wheel_legged_msgs::msg::GimbalJointState>(
+      "simulation/gimbalMotorState", 10);
+    // 创建 shootMotorCmd 订阅者  
+    gimbal_motorCmd_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::GimbalJointCmd>(
+      "simulation/gimbalMotorCmd", 10, 
+      std::bind(&MujocoSimNode::GimbalMotorCmd_callback, this, std::placeholders::_1));
+
+    // 创建 shootMotorState 发布者
+    shoot_motorState_publisher_ = this->create_publisher<wheel_legged_msgs::msg::ShootJointState>(
+      "simulation/shootMotorState", 10);
+    // 创建 shootMotorCmd 订阅者  
+    shoot_motorCmd_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::ShootJointCmd>(
+      "simulation/shootMotorCmd", 10, 
+      std::bind(&MujocoSimNode::ShootMotorCmd_callback, this, std::placeholders::_1));
+
+    // 创建定时器发布 all motor state
+    all_motorState_pubTimer_ = this->create_wall_timer(
+      std::chrono::milliseconds(1),  // 1000Hz
+      std::bind(&MujocoSimNode::AllMotorState_Publish, this));
+
+    // 创建 shootMotorState 发布者
+    chassis_imu_publisher_ = this->create_publisher<wheel_legged_msgs::msg::IMUState>(
+      "simulation/IMUState", 10);
+    // 创建定时器发布 imu data
+    chassis_imu_pubTimer_ = this->create_wall_timer(
+      std::chrono::milliseconds(1),  // 1000Hz
+      std::bind(&MujocoSimNode::ChassisIMU_Publish, this));
+
+    // 创建数据交换线程
+    data_exchange_running_ = false;
+    data_exchange_thread_ = std::thread(&MujocoSimNode::DataExchangeLoop, this);
+  }
+  ~MujocoSimNode() {
+    data_exchange_running_ = false;
+    if (data_exchange_thread_.joinable()) {
+      data_exchange_thread_.join();
+    }
   }
 private:
-  // rclcpp::Publisher<typename MessageT>::SharedPtr jointcmd_publisher_;
-  // rclcpp::Subscription<typename MessageT>::SharedPtr jointcmd_subcriber_;
-  // rclcpp::TimerBase::SharedPtr shutdown_sim_timer_;
-  mj::Simulate *sim_ptr_;
+  // 数据交换线程：从 mjdata 读取到 lowstate，从 lowcmd 写入到 mjdata
+  void DataExchangeLoop() {
+    // 等待mjdata初始化完成
+    while(rclcpp::ok()){
+      if(m != nullptr && d != nullptr){
+        std::cout << "Mujoco data is prepared" << std::endl;
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    data_exchange_running_ = true;
+    // 创建 robot_bridge
+    robot_bridge_ = std::make_shared<RobotBridge>(m, d);
+    while (rclcpp::ok() ) {
+
+      robot_bridge_->run();
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1kHz
+    }
+  }
+
+  // lowcmd 回调函数
+  void ChassisMotorCmd_callback(const wheel_legged_msgs::msg::ChassisJointCmd::SharedPtr msg) {
+    if(data_exchange_running_){
+      // std::lock_guard<std::mutex> lock(robot_bridge_->lowcmd->mutex_);
+      for(size_t i = 0; i < 6; i++) {
+        if(i < msg->joint_cmd.size()) {
+          auto & motor_cmd = robot_bridge_->lowcmd->motor_state()[i];
+          motor_cmd.mode() = msg->joint_cmd[i].mode;
+          motor_cmd.q() = static_cast<double>(msg->joint_cmd[i].q);
+          motor_cmd.dq() = static_cast<double>(msg->joint_cmd[i].dq);
+          motor_cmd.tau() = static_cast<double>(msg->joint_cmd[i].tau);
+          motor_cmd.p_kp() = static_cast<double>(msg->joint_cmd[i].p_kp);
+          motor_cmd.p_kd() = static_cast<double>(msg->joint_cmd[i].p_kd);
+          motor_cmd.v_kp() = static_cast<double>(msg->joint_cmd[i].v_kp);
+          motor_cmd.v_kd() = static_cast<double>(msg->joint_cmd[i].v_kd);
+        }
+      }
+    }
+  }
+  void GimbalMotorCmd_callback(const wheel_legged_msgs::msg::GimbalJointCmd::SharedPtr msg) {
+    if(data_exchange_running_){
+      // std::lock_guard<std::mutex> lock(robot_bridge_->lowcmd->mutex_);
+      for(size_t i = 0; i < 3; i++) {
+        if(i < msg->joint_cmd.size()) {
+          auto & motor_cmd = robot_bridge_->lowcmd->motor_state()[i+6];
+          motor_cmd.mode() = msg->joint_cmd[i+6].mode;
+          motor_cmd.q() = static_cast<double>(msg->joint_cmd[i+6].q);
+          motor_cmd.dq() = static_cast<double>(msg->joint_cmd[i+6].dq);
+          motor_cmd.tau() = static_cast<double>(msg->joint_cmd[i+6].tau);
+          motor_cmd.p_kp() = static_cast<double>(msg->joint_cmd[i+6].p_kp);
+          motor_cmd.p_kd() = static_cast<double>(msg->joint_cmd[i+6].p_kd);
+          motor_cmd.v_kp() = static_cast<double>(msg->joint_cmd[i+6].v_kp);
+          motor_cmd.v_kd() = static_cast<double>(msg->joint_cmd[i+6].v_kd);
+        }
+      }
+    }
+  }
+  void ShootMotorCmd_callback(const wheel_legged_msgs::msg::ShootJointCmd::SharedPtr msg) {
+    if(data_exchange_running_){
+      // std::lock_guard<std::mutex> lock(robot_bridge_->lowcmd->mutex_);
+      for(size_t i = 0; i < 3; i++) {
+        if(i < msg->joint_cmd.size()) {
+          auto & motor_cmd = robot_bridge_->lowcmd->motor_state()[i+8];
+          motor_cmd.mode() = msg->joint_cmd[i+8].mode;
+          motor_cmd.q() = static_cast<double>(msg->joint_cmd[i+8].q);
+          motor_cmd.dq() = static_cast<double>(msg->joint_cmd[i+8].dq);
+          motor_cmd.tau() = static_cast<double>(msg->joint_cmd[i+8].tau);
+          motor_cmd.p_kp() = static_cast<double>(msg->joint_cmd[i+8].p_kp);
+          motor_cmd.p_kd() = static_cast<double>(msg->joint_cmd[i+8].p_kd);
+          motor_cmd.v_kp() = static_cast<double>(msg->joint_cmd[i+8].v_kp);
+          motor_cmd.v_kd() = static_cast<double>(msg->joint_cmd[i+8].v_kd);
+        }
+      }
+    }
+  }
+  
+  // 发布 lowstate
+  void AllMotorState_Publish() {
+    if(data_exchange_running_) {
+      // 更新 chassis 电机状态
+      auto chassis_msg = wheel_legged_msgs::msg::ChassisJointState();
+      for(size_t i = 0; i < chassis_msg.joint_state.size(); i++) {
+        chassis_msg.joint_state[i].mode = robot_bridge_->lowstate->motor_state()[i].mode();
+        chassis_msg.joint_state[i].q = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].q());
+        chassis_msg.joint_state[i].dq = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].dq());
+        chassis_msg.joint_state[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].tau_est());
+        chassis_msg.joint_state[i].tau_est = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].tau_est());
+      }chassis_motorState_publisher_->publish(chassis_msg);
+
+      // 更新 gimbal 电机状态
+      auto gimbal_msg = wheel_legged_msgs::msg::GimbalJointState();
+      for(size_t i = 0, j = chassis_msg.joint_state.size(); i < gimbal_msg.joint_state.size(); i++) {
+        gimbal_msg.joint_state[i].mode = robot_bridge_->lowstate->motor_state()[i+j].mode();
+        gimbal_msg.joint_state[i].q = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].q());
+        gimbal_msg.joint_state[i].dq = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].dq());
+        gimbal_msg.joint_state[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau_est());
+        gimbal_msg.joint_state[i].tau_est = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau_est());
+      }gimbal_motorState_publisher_->publish(gimbal_msg);
+      
+      // 更新 shoot 电机状态
+      auto shoot_msg = wheel_legged_msgs::msg::ShootJointState();
+      for(size_t i = 0, j=chassis_msg.joint_state.size()+gimbal_msg.joint_state.size(); i < shoot_msg.joint_state.size(); i++) {
+        shoot_msg.joint_state[i].mode = robot_bridge_->lowstate->motor_state()[i+j].mode();
+        shoot_msg.joint_state[i].q = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].q());
+        shoot_msg.joint_state[i].dq = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].dq());
+        shoot_msg.joint_state[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau_est());
+        shoot_msg.joint_state[i].tau_est = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau_est());
+      }shoot_motorState_publisher_->publish(shoot_msg);   
+    }
+  }
+
+  void ChassisIMU_Publish(){
+    if(data_exchange_running_) {
+      // publish chassis imu data
+      auto chassis_imu_msg = wheel_legged_msgs::msg::IMUState();
+      chassis_imu_msg.header.stamp = this->now();
+      chassis_imu_msg.header.frame_id = "chassis_imu";
+      for(int i = 0; i < 4; i++){
+        chassis_imu_msg.quaternion[i] = robot_bridge_->lowstate->chassis_imu_state()->quaternion()[i];
+      }
+      for(int i = 0; i < 3; i++){
+        chassis_imu_msg.gyroscope[i] = robot_bridge_->lowstate->chassis_imu_state()->gyroscope()[i];
+        chassis_imu_msg.accelerometer[i] = robot_bridge_->lowstate->chassis_imu_state()->accelerometer()[i];
+        chassis_imu_msg.rpy[i] = robot_bridge_->lowstate->chassis_imu_state()->rpy()[i];
+      }
+      chassis_imu_publisher_->publish(chassis_imu_msg);
+    }
+  }
+  std::shared_ptr<RobotBridge> robot_bridge_;
+  std::thread data_exchange_thread_;
+  std::atomic<bool> data_exchange_running_;
+
+  rclcpp::Publisher<wheel_legged_msgs::msg::ChassisJointState>::SharedPtr chassis_motorState_publisher_;
+  rclcpp::Subscription<wheel_legged_msgs::msg::ChassisJointCmd>::SharedPtr chassis_motorCmd_subscriber_;
+  rclcpp::Publisher<wheel_legged_msgs::msg::GimbalJointState>::SharedPtr gimbal_motorState_publisher_;
+  rclcpp::Subscription<wheel_legged_msgs::msg::GimbalJointCmd>::SharedPtr gimbal_motorCmd_subscriber_;
+  rclcpp::Publisher<wheel_legged_msgs::msg::ShootJointState>::SharedPtr shoot_motorState_publisher_;
+  rclcpp::Subscription<wheel_legged_msgs::msg::ShootJointCmd>::SharedPtr shoot_motorCmd_subscriber_;
+  rclcpp::TimerBase::SharedPtr all_motorState_pubTimer_;
+
+  rclcpp::Publisher<wheel_legged_msgs::msg::IMUState>::SharedPtr chassis_imu_publisher_;
+  // rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr gimbal_imu_publisher_;
+  rclcpp::TimerBase::SharedPtr chassis_imu_pubTimer_;
 };
 
 // run event loop
@@ -689,7 +855,7 @@ int main(int argc, char **argv)
   param::config.load_from_yaml(proj_dir / "share"/ PACKAGE_NAME / "config.yaml");
   param::helper(argc, argv);
   if(param::config.robot_scene.is_relative()) {
-    param::config.robot_scene = proj_dir.parent_path().parent_path()/ "src" / "unitree_robots" / param::config.robot / param::config.robot_scene;
+    param::config.robot_scene = proj_dir.parent_path().parent_path()/ "src" / "wheel_legged_description" / param::config.robot_file_path;
   }
 
   // simulate object encapsulates the UIb
@@ -698,7 +864,7 @@ int main(int argc, char **argv)
     &cam, &opt, &pert, /* is_passive = */ false);
 
   // start ros2 spin thread
-  auto node = std::make_shared<MujocoSimNode>("mujoco_sim_node", sim.get());
+  auto node = std::make_shared<MujocoSimNode>("mujoco_sim_node");
   std::thread ros2_spin_thread([node]() {rclcpp::spin(node);});
   
   // start physics thread

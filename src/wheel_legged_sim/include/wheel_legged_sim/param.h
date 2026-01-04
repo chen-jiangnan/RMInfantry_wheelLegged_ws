@@ -12,6 +12,7 @@ inline struct SimulationConfig
 {
     std::string robot;
     std::filesystem::path robot_scene;
+    std::string robot_file_path;
 
     int domain_id;
     std::string interface;
@@ -33,6 +34,7 @@ inline struct SimulationConfig
         {
             robot = cfg["robot"].as<std::string>();
             robot_scene = cfg["robot_scene"].as<std::string>();
+            robot_file_path = cfg["robot_file_path"].as<std::string>();
             domain_id = cfg["domain_id"].as<int>();
             interface = cfg["interface"].as<std::string>();
             use_joystick = cfg["use_joystick"].as<int>();

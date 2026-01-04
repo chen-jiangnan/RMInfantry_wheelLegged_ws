@@ -19,6 +19,8 @@ find_package(mujoco REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(fmt REQUIRED)
+find_package(wheel_legged_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 # 构建可执行文件
 file(GLOB SIM_SRC
@@ -32,6 +34,7 @@ file(GLOB SIM_SRC
 add_executable(mujoco_sim 
   ${SIM_SRC}
   src/mujoco_sim.cpp
+  # src/robot_sdk_bridge.cpp
 )
 
 # 添加路径
@@ -46,6 +49,8 @@ target_include_directories(mujoco_sim PUBLIC
 ament_target_dependencies(mujoco_sim
   "rclcpp"
   "ament_index_cpp"
+  "wheel_legged_msgs"
+  "sensor_msgs"
 )
 
 # 定义宏
