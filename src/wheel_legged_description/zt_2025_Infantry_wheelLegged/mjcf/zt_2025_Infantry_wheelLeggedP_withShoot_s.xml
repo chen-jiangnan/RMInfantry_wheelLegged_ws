@@ -85,6 +85,7 @@
       <joint name="floating_base_joint" type="free"/>
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.50196 0.50196 0.50196 1" mesh="base_link"/>
       <geom type="box"  size="0.265 0.1 0.1" pos="0 0 0.1"rgba="1 0.0 0.0 1"  class="collision"/>
+      <site name="imu" pos="0 0 0"/>
       <body name="left_front_hip_link" pos="0.065 0.1423 0.127">
         <inertial pos="0.032281 0.032438 0.011151" quat="0.574502 0.412247 0.412247 0.574502" mass="0.2528" diaginertia="0.00064137 0.000572305 8.22754e-05"/>
         <joint name="left_front_hip_joint" pos="0 0 0" axis="0 1 0" range="0 1.48353" class='hip_joint'/>
@@ -241,12 +242,12 @@
     <jointactuatorfrc name="left_frition_wheel_torque" joint="left_frition_wheel_joint" noise="0.01"/>
     <jointactuatorfrc name="feeder_desk_torque" joint="feeder_desk_joint" noise="0.01"/>
 
-    <!-- <framequat name="imu_quat" objtype="site" objname="imu" />
-    <gyro name="imu_gyro" site="imu" />
-    <accelerometer name="imu_acc" site="imu" />
+    <framequat name="chassis_imu_quat" objtype="site" objname="imu" />
+    <gyro name="chassis_imu_gyro" site="imu" />
+    <accelerometer name="chassis_imu_acc" site="imu" />
     
     <framepos name="frame_pos" objtype="site" objname="imu" />
-    <framelinvel name="frame_vel" objtype="site" objname="imu" /> -->
+    <framelinvel name="frame_vel" objtype="site" objname="imu" />
   </sensor>  
 
 </mujoco>
