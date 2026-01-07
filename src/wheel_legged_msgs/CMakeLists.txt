@@ -16,6 +16,8 @@ find_package(std_msgs REQUIRED)
 
 set(msg_files
   # High Level Control MSG
+  "msg/HighLevelControl/Sport/ChassisCmd.msg"
+
   "msg/HighLevelControl/JointCmd.msg"
   "msg/HighLevelControl/JointState.msg"
   "msg/HighLevelControl/ChassisJointCmd.msg"
