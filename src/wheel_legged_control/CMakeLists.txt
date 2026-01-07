@@ -12,15 +12,34 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(wheel_legged_msgs REQUIRED)
 
-add_executable(chassis_control src/chassis_control.cpp)
+set(src_files
+  "common/Application/legControl.cpp"
+  "common/Application/rotateControl.cpp"
+  "common/Controllers/lqr.cpp"
+  "common/Controllers/pid.cpp"
+  "common/Engine/engine.cpp"
+
+)
+
+add_executable(chassis_control 
+  src/chassis_control.cpp
+  ${src_files}
+)
 target_include_directories(chassis_control PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/common>
   $<INSTALL_INTERFACE:include>)
 target_compile_features(chassis_control PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
   chassis_control
   "rclcpp"
+  "wheel_legged_msgs"
+)
+target_link_libraries(chassis_control 
+  Eigen3::Eigen
 )
 
 install(TARGETS chassis_control
