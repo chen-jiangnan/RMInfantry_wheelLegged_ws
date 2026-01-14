@@ -11,5 +11,7 @@ build/
 log/
 install/
 
+*.asv
+
 
 
