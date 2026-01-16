@@ -21,7 +21,9 @@
 
 #include <cstdint>
 #include <Eigen/Dense>
-#include <Eigen/src/Core/Matrix.h>
+#include <cmath>
+#include <iostream>
+#include <iomanip>
 
 const float PI = 3.14159265358979323846;
   /*define model state-space*/
@@ -116,6 +118,7 @@ typedef struct{
 extern EngineModel_t rmInfantry_WLR;
 
 typedef struct{
+    uint8_t index;
     uint8_t ifInvertPos;
     uint8_t ifInvertVel;
     uint8_t ifInvertTorque;
@@ -226,5 +229,7 @@ void Engine_SystemSpaceCalculate(
     float* u,
     float* x_dot
 );
+
+void PrintEngineModelInfo(const EngineModel_t* model); 
 #endif
   

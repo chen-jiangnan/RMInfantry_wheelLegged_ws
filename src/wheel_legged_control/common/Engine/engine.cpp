@@ -17,8 +17,7 @@
   ****************************(C) COPYRIGHT 2024 征途****************************
   */
 #include "engine.hpp"
-#include <Eigen/src/Core/Matrix.h>
-#include <cmath>
+
 
 
 /*define model state-space*/
@@ -72,10 +71,10 @@ float MMatrixData[] = {     0.0, 0.0,
 EngineModel_t rmInfantry_WLR;
 
 const EngineJointConfig_t hipJointConfig[4] = {
-    {0 ,0, 0, - PI/9},      //hipjoint1
-    {1 ,1, 1, - PI/9},      //hiojoint2
-    {1 ,1, 1,   PI*10/9},   //hipjoint3
-    {0 ,0, 0,   PI*10/9}    //hipjoint4
+    {0, 0 ,0, 0, - PI/9},      //hipjoint1
+    {1, 0 ,0, 0,   PI*10/9},   //hipjoint2
+    {3, 1, 1, 1, - PI/9},      //hiojoint3
+    {4, 1 ,1, 1,   PI*10/9}    //hipjoint4
     // {1 ,0, 1, - PI/9},      //hipjoint1
     // {0 ,1, 0, - PI/9},      //hiojoint2
     // {0 ,1, 0,   PI*10/9},   //hipjoint3
@@ -85,8 +84,8 @@ const EngineJointConfig_t wheelJointConfig[2] = {
     // {1 ,1, 1, 0},       //left wheel
     // {0 ,0, 0, 0},      //right wheel
 
-    {0 ,0, 0, 0},      //left wheel
-    {1 ,1, 1, 0}       //right wheel
+    {2, 0 ,0, 0, 0},      //left wheel
+    {5, 1 ,1, 1, 0}       //right wheel
 };
 /**
 * @brief   5连杆轮腿构型机器人模型初始化
@@ -175,7 +174,6 @@ void Engine_ForwardKinematics(
         float y = B0 - sqrt_out;
         float x = A0 + C0;
         float result = std::atan2(y, x);
-        // arm_atan2_f32(y, x, &result);
         
         float phi2 = 2*result;
         if(phi2 < 0){
@@ -188,11 +186,10 @@ void Engine_ForwardKinematics(
         x_c = L1*std::cos(phi1[i]) + L2*std::cos(phi2) + L3/2;
         y_c = L1*std::sin(phi1[i]) + L2*std::sin(phi2);
         // step5
-        L0[i] = std::sqrt(x_c*x_c + y_c*y_c);// arm_sqrt_f32(x_c*x_c + y_c*y_c, &L0[i]);
-        phi0[i] = std::atan2(y_c, x_c);// arm_atan2_f32(y_c, x_c, &phi0[i]);
+        L0[i] = std::sqrt(x_c*x_c + y_c*y_c);
+        phi0[i] = std::atan2(y_c, x_c);
         // step6
         float phi3 = std::atan2(y_c-y_d, x_c-x_d);
-        // arm_atan2_f32(y_c-y_d, x_c-x_d, &phi3);
 
         if(!ifUpdate){return;}
         model->frame.fiveLink_jointFrame[i].L0 = L0[i];
@@ -516,4 +513,72 @@ float* Fn
         /*step4:fn = mw*zwddot + p + mw*g*/
         Fn[i] = P + model->link.wheelLink[i].mass* (9.8 + zwddot); 
     }
-}       
+}
+
+void PrintEngineModelInfo(const EngineModel_t* model) {
+    std::cout << "\n========== EngineModel Debug Info ==========" << std::endl;
+    
+    // 打印身体姿态
+    std::cout << "\n--- Body World Frame ---" << std::endl;
+    std::cout << "Roll:  " << std::setw(10) << std::fixed << std::setprecision(4) << model->frame.body_worldFrame.roll 
+              << " rad, Pitch: " << std::setw(10) << model->frame.body_worldFrame.pitch
+              << " rad, Yaw: " << std::setw(10) << model->frame.body_worldFrame.yaw << " rad" << std::endl;
+    std::cout << "Angular Vel: [" 
+              << std::setw(8) << model->frame.body_worldFrame.w[0] << ", "
+              << std::setw(8) << model->frame.body_worldFrame.w[1] << ", "
+              << std::setw(8) << model->frame.body_worldFrame.w[2] << "] rad/s" << std::endl;
+    std::cout << "Acceleration: [" 
+              << std::setw(8) << model->frame.body_worldFrame.a[0] << ", "
+              << std::setw(8) << model->frame.body_worldFrame.a[1] << ", "
+              << std::setw(8) << model->frame.body_worldFrame.a[2] << "] m/s²" << std::endl;
+    
+    // 打印关节状态（按左右侧）
+    for (int side = 0; side < 2; side++) {
+        std::cout << "\n--- " << (side == 0 ? "Left Side" : "Right Side") << " ---" << std::endl;
+        
+        // 5连杆关节帧
+        std::cout << "FiveLink Frame:" << std::endl;
+        std::cout << "  L0:  " << std::setw(10) << model->frame.fiveLink_jointFrame[side].L0 << " m" << std::endl;
+        std::cout << "  Phi: [";
+        for (int i = 0; i < 5; i++) {
+            std::cout << std::setw(8) << model->frame.fiveLink_jointFrame[side].phi[i];
+            if (i < 4) std::cout << ", ";
+        }
+        std::cout << "] rad" << std::endl;
+        
+        // VMC关节帧
+        std::cout << "VMC Joint Frame:" << std::endl;
+        std::cout << "  Theta: " << std::setw(10) << model->frame.vmc_jointFrame[side].theta 
+                  << " rad, APhi: " << std::setw(10) << model->frame.vmc_jointFrame[side].aphi << " rad" << std::endl;
+        
+        // VMC力帧
+        std::cout << "VMC Force Frame:" << std::endl;
+        std::cout << "  Tp: " << std::setw(10) << model->frame.vmc_forceFrame[side].Tp 
+                  << " N·m, F: " << std::setw(10) << model->frame.vmc_forceFrame[side].F << " N" << std::endl;
+        
+        // 髋关节（4个） - 修改为左: 0,3, 右: 1,2
+        std::cout << "Hip Joints:" << std::endl;
+        if (side == 0) {  // 左: 0,3
+            std::cout << "  Joint 0: q=" << std::setw(8) << model->joint.hipJoint[0].q 
+                      << " rad, w=" << std::setw(8) << model->joint.hipJoint[0].w 
+                      << " rad/s, t=" << std::setw(8) << model->joint.hipJoint[0].t << " N·m" << std::endl;
+            std::cout << "  Joint 3: q=" << std::setw(8) << model->joint.hipJoint[3].q 
+                      << " rad, w=" << std::setw(8) << model->joint.hipJoint[3].w 
+                      << " rad/s, t=" << std::setw(8) << model->joint.hipJoint[3].t << " N·m" << std::endl;
+        } else {  // 右: 1,2
+            std::cout << "  Joint 1: q=" << std::setw(8) << model->joint.hipJoint[1].q 
+                      << " rad, w=" << std::setw(8) << model->joint.hipJoint[1].w 
+                      << " rad/s, t=" << std::setw(8) << model->joint.hipJoint[1].t << " N·m" << std::endl;
+            std::cout << "  Joint 2: q=" << std::setw(8) << model->joint.hipJoint[2].q 
+                      << " rad, w=" << std::setw(8) << model->joint.hipJoint[2].w 
+                      << " rad/s, t=" << std::setw(8) << model->joint.hipJoint[2].t << " N·m" << std::endl;
+        }
+        
+        // 轮关节
+        std::cout << "Wheel Joint " << side << ":" << std::endl;
+        std::cout << "  q=" << std::setw(8) << model->joint.wheelJoint[side].q 
+                  << " rad, w=" << std::setw(8) << model->joint.wheelJoint[side].w 
+                  << " rad/s, t=" << std::setw(8) << model->joint.wheelJoint[side].t << " N·m" << std::endl;
+    }
+    std::cout << "\n============================================\n" << std::endl;
+}

@@ -6,56 +6,81 @@
 #include <ostream>
 #include <rclcpp/executors.hpp>
 #include <rclcpp/node.hpp>
+#include <rclcpp/publisher.hpp>
 #include <rclcpp/utilities.hpp>
+#include <wheel_legged_msgs/msg/detail/chassis_ctrl__struct.hpp>
 #include <wheel_legged_msgs/msg/detail/chassis_joint_cmd__struct.hpp>
 #include <wheel_legged_msgs/msg/detail/chassis_joint_state__struct.hpp>
+#include <wheel_legged_msgs/msg/detail/chassis_state__struct.hpp>
 #include "Application/legControl.hpp"
 #include "Application/rotateControl.hpp"
 #include "Controllers/lqr.hpp"
 #include "Engine/engine.hpp"
 #include "wheel_legged_msgs/msg/imu_state.hpp"
-#include "wheel_legged_msgs/msg/chassis_cmd.hpp"
+#include "wheel_legged_msgs/msg/chassis_ctrl.hpp"
+#include "wheel_legged_msgs/msg/chassis_state.hpp"
 #include "wheel_legged_msgs/msg/chassis_joint_cmd.hpp"
 #include "wheel_legged_msgs/msg/chassis_joint_state.hpp"
 
 #define CHASSIS_HIPJOINT_MIN_POS -PI/36
 #define CHASSIS_HIPJOINT_MAX_POS PI*4/9
 
-class ChassisCmd{
-public:
-  ChassisCmd(){}
-  float target_x[6] = {0};    
-  float target_L0[2] = {0};   
-  float target_Roll = {0};
-  float target_wYaw = {0};    
-  float target_fs[2]={0}; 
-};
-class ChassisIMUState{
-public:
-  ChassisIMUState(){}
-  float quaternion[4];
-  float gyr[3];
-  float acc[3];
-  float roll;
-  float pitch;
-  float yaw;
-};
-class ChassisJointState{
-public:
-  ChassisJointState() : mode(0), q(0), dq(0), tau(0), tau_est(0){}
+namespace chassis_control{
+  class Ctrl{
+  public:
+    Ctrl(){}
+    float target_x[6] = {0};    
+    float target_L0[2] = {0};   
+    float target_Roll = {0};
+    float target_wYaw = {0};    
+    float target_fs[2]={0}; 
+  };
+
+  class IMUState{
+  public:
+    IMUState(){}
+    float quaternion[4];
+    float gyr[3];
+    float acc[3];
+    float roll;
+    float pitch;
+    float yaw;
+  };
+  class JointState{
+  public:
+    JointState() : mode(0), q(0), dq(0), tau(0), tau_est(0){}
     uint8_t mode;
     float q;
     float dq;
     float tau;
     float tau_est;
-};
-class ChassisState{
-public:
-  ChassisState(){}
-  ChassisIMUState imu;
-  ChassisJointState hipjoint[4];
-  ChassisJointState wheeljoint[4];
-};
+  };
+  class JointCmd{
+  public:
+    JointCmd() : mode(0), q(0), dq(0), tau(0),
+                 p_kp(0), p_kd(0), v_kp(0),v_kd(0){}
+    uint8_t mode;
+    float q;
+    float dq;
+    float tau;
+    float p_kp;
+    float p_kd;
+    float v_kp;
+    float v_kd;
+  };
+
+  class State{
+  public:
+    State(){}
+    IMUState imu;
+    JointState joint[6];
+  };
+  class Cmd{
+  public:
+    Cmd(){}
+    JointCmd joint[6];
+  };
+} //namespace chassis control 
 
 
 class ChassisControlNode : public rclcpp::Node{
@@ -67,21 +92,26 @@ public:
     chassis_imuState_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::IMUState>(
       "simulation/IMUState", 10, 
       std::bind(&ChassisControlNode::ChassisIMUState_callback, this, std::placeholders::_1));
-    chassis_cmd_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::ChassisCmd>(
-      "sport/ChassisCmd", 10, 
-      std::bind(&ChassisControlNode::ChassisCmd_callback, this, std::placeholders::_1));     
+    chassis_ctrl_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::ChassisCtrl>(
+      "sport/chassisCtrl", 10, 
+      std::bind(&ChassisControlNode::ChassisCtrl_callback, this, std::placeholders::_1));     
     chassis_jointState_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::ChassisJointState>(
         "simulation/chassisMotorState", 10, 
         std::bind(&ChassisControlNode::ChassisJointState_callback, this, std::placeholders::_1));     
     // 创建 发布者
     chassis_jointCmd_publisher_ = this->create_publisher<wheel_legged_msgs::msg::ChassisJointCmd>(
       "simulation/chassisMotorCmd", 10);
-    // 创建定时器发布 all motor state
-    chassis_jointCmd_pubTimer_ = this->create_wall_timer(
+    chassis_state_publisher_ = this->create_publisher<wheel_legged_msgs::msg::ChassisState>(
+      "sport/chassisState", 10);
+    // 创建 定时器
+    chassis_jointCmd_pubTimer_ = this->create_wall_timer(//发布 all motor state
       std::chrono::milliseconds(1),  // 1000Hz
       std::bind(&ChassisControlNode::JointCmd_timCallback, this));
+    chassis_state_pubTimer_ = this->create_wall_timer(
+      std::chrono::milliseconds(1),  // 1000Hz
+      std::bind(&ChassisControlNode::ChassisState_timCallback, this));
     debug_timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(100),  // 1000Hz
+      std::chrono::milliseconds(100), // 10Hz
       std::bind(&ChassisControlNode::Debug_PrintEngineModel, this));
 
     // 创建任务线程
@@ -140,16 +170,16 @@ void Debug_PrintEngineModel() {
           std::cout << "  Joint 0: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[0].q 
                     << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[0].w 
                     << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[0].t << " N·m" << std::endl;
-          std::cout << "  Joint 3: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].q 
-                    << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].w 
-                    << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].t << " N·m" << std::endl;
-      } else {  // 右: 1,2
-          std::cout << "  Joint 1: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[1].q 
+          std::cout << "  Joint 3: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[1].q 
                     << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[1].w 
                     << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[1].t << " N·m" << std::endl;
-          std::cout << "  Joint 2: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[2].q 
+      } else {  // 右: 1,2
+          std::cout << "  Joint 1: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[2].q 
                     << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[2].w 
                     << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[2].t << " N·m" << std::endl;
+          std::cout << "  Joint 2: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].q 
+                    << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].w 
+                    << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].t << " N·m" << std::endl;
       }
       
       // 轮关节
@@ -212,8 +242,8 @@ void Debug_PrintEngineModel() {
       
       // 打印输出 Out (2x1)
       std::cout << "\n  Control Output (2x1):" << std::endl;
-      std::cout << "    Tp: " << std::setw(10) << lqr.Out.matrixHandle.data()[0] << " N·m (绕机体转轴力矩)" << std::endl;
-      std::cout << "    T:  " << std::setw(10) << lqr.Out.matrixHandle.data()[1] << " N (沿杆长方向力)" << std::endl;
+      std::cout << "    T: " << std::setw(10) << lqr.Out.matrixHandle.data()[0] << " N·m (绕机体转轴力矩)" << std::endl;
+      std::cout << "    Tp:  " << std::setw(10) << lqr.Out.matrixHandle.data()[1] << " N·m (驱动轮力矩)" << std::endl;
       
       if (ctrl_idx < 2 - 1) {
           std::cout << "\n" << std::string(50, '-') << "\n" << std::endl;
@@ -230,92 +260,110 @@ void Debug_PrintEngineModel() {
 
   void ChassisIMUState_callback(const wheel_legged_msgs::msg::IMUState::SharedPtr msg){
     for(int i = 0; i<4; i++){
-      chassis_state.imu.quaternion[i] = msg->quaternion[i];
+      chassis_state_.imu.quaternion[i] = msg->quaternion[i];
     }
     for(int i = 0; i<3; i++){
-      chassis_state.imu.gyr[i] = msg->gyroscope[i];
-      chassis_state.imu.acc[i] = msg->accelerometer[i];
+      chassis_state_.imu.gyr[i] = msg->gyroscope[i];
+      chassis_state_.imu.acc[i] = msg->accelerometer[i];
     }
-    chassis_state.imu.roll = msg->rpy[0];
-    chassis_state.imu.pitch = msg->rpy[1];
-    chassis_state.imu.yaw = msg->rpy[2];    
+    chassis_state_.imu.roll = msg->rpy[0];
+    chassis_state_.imu.pitch = msg->rpy[1];
+    chassis_state_.imu.yaw = msg->rpy[2];    
   }
   void ChassisJointState_callback(const wheel_legged_msgs::msg::ChassisJointState::SharedPtr msg){
-    chassis_state.hipjoint[0].q = msg->joint_state[0].q;
-    chassis_state.hipjoint[0].dq = msg->joint_state[0].dq;
-    chassis_state.hipjoint[0].tau = msg->joint_state[0].tau;
-    chassis_state.hipjoint[0].tau_est = msg->joint_state[0].tau_est;
-    chassis_state.hipjoint[1].q = msg->joint_state[3].q;
-    chassis_state.hipjoint[1].dq = msg->joint_state[3].dq;
-    chassis_state.hipjoint[1].tau = msg->joint_state[3].tau;
-    chassis_state.hipjoint[1].tau_est = msg->joint_state[3].tau_est;
-    chassis_state.wheeljoint[0].q = msg->joint_state[2].q;
-    chassis_state.wheeljoint[0].dq = msg->joint_state[2].dq;
-    chassis_state.wheeljoint[0].tau = msg->joint_state[2].tau;
-    chassis_state.wheeljoint[0].tau_est = msg->joint_state[2].tau_est;
-
-    chassis_state.hipjoint[2].q = msg->joint_state[4].q;
-    chassis_state.hipjoint[2].dq = msg->joint_state[4].dq;
-    chassis_state.hipjoint[2].tau = msg->joint_state[4].tau;
-    chassis_state.hipjoint[2].tau = msg->joint_state[4].tau;
-    chassis_state.hipjoint[3].q = msg->joint_state[1].q;
-    chassis_state.hipjoint[3].dq = msg->joint_state[1].dq;
-    chassis_state.hipjoint[3].tau = msg->joint_state[1].tau;
-    chassis_state.hipjoint[3].tau_est = msg->joint_state[1].tau_est;
-    chassis_state.wheeljoint[1].q = msg->joint_state[5].q;
-    chassis_state.wheeljoint[1].dq = msg->joint_state[5].dq;
-    chassis_state.wheeljoint[1].tau = msg->joint_state[5].tau;
-    chassis_state.wheeljoint[1].tau_est = msg->joint_state[5].tau_est;
+    for(int i = 0; i < 6; i++){
+      chassis_state_.joint[i].q = msg->joint_state[i].q;
+      chassis_state_.joint[i].dq = msg->joint_state[i].dq;
+      chassis_state_.joint[i].tau = msg->joint_state[i].tau;
+      chassis_state_.joint[i].tau_est = msg->joint_state[i].tau_est;
+    }
   }  
-  void ChassisCmd_callback(const wheel_legged_msgs::msg::ChassisCmd::SharedPtr msg){
+  
+  void ChassisCtrl_callback(const wheel_legged_msgs::msg::ChassisCtrl::SharedPtr msg){
     for(int i = 0; i<6; i++){
-      chassis_cmd.target_x[i]=msg->target_x[i];
+      chassis_ctrl_.target_x[i]=msg->target_x[i];
     }
     for(int i = 0; i<2; i++){
       // chassis_cmd.target_L0[i]=msg->target_l0[i];
-      chassis_cmd.target_L0[i] = 0.20;
-      chassis_cmd.target_fs[i]=msg->target_fs[i];    
+      chassis_ctrl_.target_L0[i] = 0.20;
+      chassis_ctrl_.target_fs[i] = msg->target_fs[i];    
     }
-    chassis_cmd.target_Roll=msg->target_roll;
-    chassis_cmd.target_wYaw=msg->target_wyaw;
+    chassis_ctrl_.target_Roll = msg->target_roll;
+    chassis_ctrl_.target_wYaw = msg->target_wyaw;
   }
   void JointCmd_timCallback(){
     auto msg= wheel_legged_msgs::msg::ChassisJointCmd();
     for(int i = 0; i < 6; i++){
-      if(i==2 || i==5){
-        msg.joint_cmd[i].p_kp = 0;
-        msg.joint_cmd[i].p_kd = 0;      
-      }
-      else{
-        msg.joint_cmd[i].p_kp = 10;
-        msg.joint_cmd[i].p_kd = 1;
-      }
-    msg.joint_cmd[i].q = 0;
-    msg.joint_cmd[i].dq = 0;
-    msg.joint_cmd[i].tau = 0;
+      msg.joint_cmd[i].mode = chassis_cmd_.joint[i].mode;
+      msg.joint_cmd[i].q = chassis_cmd_.joint[i].q;
+      msg.joint_cmd[i].dq = chassis_cmd_.joint[i].dq;
+      msg.joint_cmd[i].tau = chassis_cmd_.joint[i].tau;
+      msg.joint_cmd[i].p_kp = chassis_cmd_.joint[i].p_kp;
+      msg.joint_cmd[i].p_kd = chassis_cmd_.joint[i].p_kd;
+      msg.joint_cmd[i].v_kp = chassis_cmd_.joint[i].v_kp;
+      msg.joint_cmd[i].v_kd = chassis_cmd_.joint[i].v_kd;        
     }
-    msg.joint_cmd[0].q = hipJoint_setP[0];
-    msg.joint_cmd[0].dq = hipJoint_setV[0];
-    msg.joint_cmd[0].tau = hipJoint_setT[0];
-    msg.joint_cmd[1].q = hipJoint_setP[3];
-    msg.joint_cmd[1].dq = hipJoint_setV[3];
-    msg.joint_cmd[1].tau = hipJoint_setT[3];
-    msg.joint_cmd[2].q =  0;
-    msg.joint_cmd[2].dq = 0;
-    msg.joint_cmd[2].tau = wheelJoint_setT[0];
-
-    msg.joint_cmd[3].q = hipJoint_setP[1];
-    msg.joint_cmd[3].dq = hipJoint_setV[1];
-    msg.joint_cmd[3].tau = hipJoint_setT[1];
-    msg.joint_cmd[4].q = hipJoint_setP[2];
-    msg.joint_cmd[4].dq = hipJoint_setV[2];
-    msg.joint_cmd[4].tau = hipJoint_setT[2];
-    msg.joint_cmd[5].q =  0;
-    msg.joint_cmd[5].dq = 0;
-    msg.joint_cmd[5].tau = wheelJoint_setT[1];
     chassis_jointCmd_publisher_->publish(msg);
   }
+  void ChassisState_timCallback(){
+    auto msg = wheel_legged_msgs::msg::ChassisState();
+    msg.header.frame_id = "chassis_state";
+    msg.header.stamp = this->now();
+
+    msg.body_worldframe.rpy[0] = rmInfantry_WLR.frame.body_worldFrame.roll;
+    msg.body_worldframe.rpy[1] = rmInfantry_WLR.frame.body_worldFrame.pitch;
+    msg.body_worldframe.rpy[2] = rmInfantry_WLR.frame.body_worldFrame.yaw;
+    for(int i = 0; i < 2; i++){
+      msg.fivelink_forceframe[i].fx = rmInfantry_WLR.frame.fiveLink_forceFrame[i].Fx;
+      msg.fivelink_forceframe[i].fy = rmInfantry_WLR.frame.fiveLink_forceFrame[i].Fy;
+
+      msg.fivelink_jointframe[i].l0 = rmInfantry_WLR.frame.fiveLink_jointFrame[i].L0;
+      for(int j = 0; j < 5; j++){
+        msg.fivelink_jointframe[i].phi[j] = rmInfantry_WLR.frame.fiveLink_jointFrame[i].phi[j];
+      }
+      msg.legvmc_forceframe[i].f = rmInfantry_WLR.frame.vmc_forceFrame[i].F;
+      msg.legvmc_forceframe[i].tp = rmInfantry_WLR.frame.vmc_forceFrame[i].Tp;
+      msg.legvmc_jointframe[i].theta = rmInfantry_WLR.frame.vmc_jointFrame[i].theta;
+      msg.legvmc_jointframe[i].aphi = rmInfantry_WLR.frame.vmc_jointFrame[i].aphi;
+      msg.legvmc_jointframe[i].last_theta = rmInfantry_WLR.frame.vmc_jointFrame[i].last_theta;
+      msg.legvmc_jointframe[i].last_aphi = rmInfantry_WLR.frame.vmc_jointFrame[i].last_aphi;
+    }
+
+    for(int i = 0; i < 2; i++){
+      for(int j = 0; j < 6; j++){
+        msg.lqrctrl[i].x[j] = lqrControllerHandle[i].X.matrixHandle(j);
+        msg.lqrctrl[i].xd[j] = lqrControllerHandle[i].Xd.matrixHandle(j);
+      }
+      msg.lqrctrl[i].out[0] = lqrControllerHandle[i].Out.matrixHandle(0);
+      msg.lqrctrl[i].out[1] = lqrControllerHandle[i].Out.matrixHandle(1);
+    }
+
+    for(int i = 0; i < 2; i++){
+      msg.legctrl.spring_damping[i].set = leg_ControllerHandle.base[i].springDamping.set;
+      msg.legctrl.spring_damping[i].fdb = leg_ControllerHandle.base[i].springDamping.fdb;
+      msg.legctrl.spring_damping[i].out = leg_ControllerHandle.base[i].springDamping.out;
+      msg.legctrl.feedforward_gravity[i] = leg_ControllerHandle.base[i].feedforward_gravity;
+      msg.legctrl.feedforward_fs[i] = leg_ControllerHandle.base[i].feedforward_fs;
+      msg.legctrl.f[i] = leg_ControllerHandle.base[i].F;
+      msg.legctrl.compensation_tp[i] = leg_ControllerHandle.base[i].compensation_tp;
+    }
+
+    msg.legctrl.compensation_roll.set = leg_ControllerHandle.compensationRoll.set;
+    msg.legctrl.compensation_roll.fdb = leg_ControllerHandle.compensationRoll.fdb;
+    msg.legctrl.compensation_roll.out = leg_ControllerHandle.compensationRoll.out;
+    msg.legctrl.compensation_phi0.set = leg_ControllerHandle.compensationPhi0.set;
+    msg.legctrl.compensation_phi0.fdb = leg_ControllerHandle.compensationPhi0.fdb;
+    msg.legctrl.compensation_phi0.out = leg_ControllerHandle.compensationPhi0.out;
+
+    msg.rotatectrl.set = rotateControllerHandle.set;
+    msg.rotatectrl.fdb = rotateControllerHandle.fdb;
+    msg.rotatectrl.out = rotateControllerHandle.out;
+
+    chassis_state_publisher_->publish(msg);
+  }
+
   void Chassis_Task(){
+
 	  /*初始化模型*/
 	  Engine_ModelInit(&rmInfantry_WLR);
 	  /*初始化控制器*/
@@ -325,37 +373,51 @@ void Debug_PrintEngineModel() {
 	  rotateControllerInit(&rotateControllerHandle);
   
 	  // SlipDetection_Init(&slipDetection_handle, 0.2, 0.05, 0.1);
-	  chassis_cmd.target_L0[0] = 0.20;
-	  chassis_cmd.target_L0[1] = 0.20;
+    /*任务控制参数设置*/
+    const uint8_t steptime = 4; // 4ms运行一次
+
+	  chassis_ctrl_.target_L0[0] = 0.20;
+	  chassis_ctrl_.target_L0[1] = 0.20;
+    
+    float xdot[2][6*1]= {{0}};
+    float hipJoint_setP[4]={0};
+    float hipJoint_setV[4]={0};
+    float hipJoint_setT[4]={0};
+    float wheelJoint_setT[2]={0};
+
 	  while(rclcpp::ok())
 	  {
 		  /*update body euler angle*/
-		  rmInfantry_WLR.frame.body_worldFrame.roll =    -chassis_state.imu.roll;
-		  rmInfantry_WLR.frame.body_worldFrame.yaw =      chassis_state.imu.yaw ;
-		  rmInfantry_WLR.frame.body_worldFrame.pitch =   -chassis_state.imu.pitch;
+		  rmInfantry_WLR.frame.body_worldFrame.roll =    -chassis_state_.imu.roll;
+		  rmInfantry_WLR.frame.body_worldFrame.yaw =      chassis_state_.imu.yaw ;
+		  rmInfantry_WLR.frame.body_worldFrame.pitch =   -chassis_state_.imu.pitch;
 		  /*update body gyro data*/
-		  rmInfantry_WLR.frame.body_worldFrame.w[0] = -chassis_state.imu.gyr[1];
-		  rmInfantry_WLR.frame.body_worldFrame.w[2] =  chassis_state.imu.gyr[2];
-		  rmInfantry_WLR.frame.body_worldFrame.w[1] = -chassis_state.imu.gyr[0];
-		  /*update hip joint data*/
+		  rmInfantry_WLR.frame.body_worldFrame.w[0] = -chassis_state_.imu.gyr[1];
+		  rmInfantry_WLR.frame.body_worldFrame.w[2] =  chassis_state_.imu.gyr[2];
+		  rmInfantry_WLR.frame.body_worldFrame.w[1] = -chassis_state_.imu.gyr[0];
+
+      /*update joint data*/
 		  for(int i = 0; i < 4; i++){
-			  // map to the kinmatics equation(fivelink frame) 
+			  // map to the kinmatics equation(fivelink frame)
+        uint8_t index = hipJointConfig[i].index;
 			  rmInfantry_WLR.joint.hipJoint[i].q = 
-				  (hipJointConfig[i].ifInvertPos ? -1 : 1)*chassis_state.hipjoint[i].q + hipJointConfig[i].posOffset;
+				  (hipJointConfig[i].ifInvertPos ? -1 : 1)*chassis_state_.joint[index].q + hipJointConfig[i].posOffset;
 			  rmInfantry_WLR.joint.hipJoint[i].w = 
-				  (hipJointConfig[i].ifInvertVel ? -1 : 1)*chassis_state.hipjoint[i].dq;
+				  (hipJointConfig[i].ifInvertVel ? -1 : 1)*chassis_state_.joint[index].dq;
 			  rmInfantry_WLR.joint.hipJoint[i].t = 
-				  (hipJointConfig[i].ifInvertTorque ? -1 : 1)*chassis_state.hipjoint[i].tau;		
+				  (hipJointConfig[i].ifInvertTorque ? -1 : 1)*chassis_state_.joint[index].tau;
 		  }
 		  /*update wheel joint data*/
 		  for(int i = 0; i < 2; i++){
+        uint8_t index = wheelJointConfig[i].index;
 			  rmInfantry_WLR.joint.wheelJoint[i].q = 
-				  (wheelJointConfig[i].ifInvertPos ? -1 : 1)*chassis_state.wheeljoint[i].q;
+				  (wheelJointConfig[i].ifInvertPos ? -1 : 1)*chassis_state_.joint[index].q;
 			  rmInfantry_WLR.joint.wheelJoint[i].w = // dps/lsb map to m/s
-				  (wheelJointConfig[i].ifInvertVel ? -1 : 1)*chassis_state.wheeljoint[i].dq * rmInfantry_WLR.link.wheelLink[i].lengthOrRadius;
+				  (wheelJointConfig[i].ifInvertVel ? -1 : 1)*chassis_state_.joint[index].dq * rmInfantry_WLR.link.wheelLink[i].lengthOrRadius;
 			  rmInfantry_WLR.joint.wheelJoint[i].t = 
-				  (wheelJointConfig[i].ifInvertTorque ? -1 : 1)*chassis_state.wheeljoint[i].tau; //map to torque note!!!
+				  (wheelJointConfig[i].ifInvertTorque ? -1 : 1)*chassis_state_.joint[index].tau; //map to torque note!!!
 		  }
+
 		  /*updata remote control data*/
 		  // target_x[3] = RC_USER.move_x;
   
@@ -363,9 +425,9 @@ void Debug_PrintEngineModel() {
 		  float in_phi1[2], in_phi4[2], out_phi0[2], out_L0[2];
   
 		  in_phi1[0] = rmInfantry_WLR.joint.hipJoint[0].q;		// joint space map to fivelink joint frame
-		  in_phi4[0] = rmInfantry_WLR.joint.hipJoint[3].q;
-		  in_phi1[1] = rmInfantry_WLR.joint.hipJoint[1].q;
-		  in_phi4[1] = rmInfantry_WLR.joint.hipJoint[2].q;
+		  in_phi4[0] = rmInfantry_WLR.joint.hipJoint[1].q;
+		  in_phi1[1] = rmInfantry_WLR.joint.hipJoint[2].q;
+		  in_phi4[1] = rmInfantry_WLR.joint.hipJoint[3].q;
 		  Engine_ForwardKinematics(&rmInfantry_WLR, in_phi1, in_phi4, out_phi0, out_L0, 1);
   
 		  /*lqr Control*/
@@ -385,17 +447,17 @@ void Debug_PrintEngineModel() {
         lqrControllerHandle[i].Gain.matrixHandle = Eigen::Map<Eigen::Matrix<float, 2, 6, Eigen::RowMajor>>(LQRKMatrixData);
 			  // memcpy(&lqrControllerHandle[i].Gain.matrixData, LQRKMatrixData, 6*2*sizeof(float));
 			  /* */
-			  if(chassis_cmd.target_x[3] != 0){ //如果目标速度不为零，则将关于位移的lqr权重置零
+			  if(chassis_ctrl_.target_x[3] != 0){ //如果目标速度不为零，则将关于位移的lqr权重置零
 				  lqrControllerHandle[i].Gain.matrixHandle.data()[2] = 0; //T
 				  lqrControllerHandle[i].Gain.matrixHandle.data()[8] = 0; //Tp
 			  }
-			  LQRController_Calc(&lqrControllerHandle[i], chassis_cmd.target_x, &lqrRevX[i][0], &lqrOutput[i][0]);
+			  LQRController_Calc(&lqrControllerHandle[i], chassis_ctrl_.target_x, &lqrRevX[i][0], &lqrOutput[i][0]);
 			  lqrOutput_T[i] =  lqrOutput[i][0];
 			  lqrOutput_Tp[i] = lqrOutput[i][1];
 		  }
   
-		  float xn[2] = {lqrRevX[0][3], chassis_state.imu.acc[1]};
-		  float zn[2] = {lqrRevX[0][3], chassis_state.imu.acc[1]};
+		  float xn[2] = {lqrRevX[0][3], chassis_state_.imu.acc[1]};
+		  float zn[2] = {lqrRevX[0][3], chassis_state_.imu.acc[1]};
 		  // SlipDetection(&slipDetection_handle, xn, zn, 4.0/1000);
 		  
 		  /*leg control*/
@@ -407,22 +469,23 @@ void Debug_PrintEngineModel() {
 		  rev_theta[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].theta;
 		  rev_theta[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].theta;
 		  legControl(&leg_ControllerHandle, 
-        chassis_cmd.target_L0, 
+        chassis_ctrl_.target_L0, 
         out_L0, 
-        chassis_cmd.target_Roll,
+        chassis_ctrl_.target_Roll,
         rmInfantry_WLR.frame.body_worldFrame.roll, 
         rev_theta, 
-        chassis_cmd.target_fs, 
+        chassis_ctrl_.target_fs, 
         out_phi0, 
         phi0Compensation_Tp);
   
 		  /*body yaw rotate control*/
 		  float yawRotateOut_T[2] = {0};  		// [PID]
-		  yawRotateOut_T[1] = rotateControl(&rotateControllerHandle, chassis_cmd.target_wYaw, rmInfantry_WLR.frame.body_worldFrame.w[2]);
+		  yawRotateOut_T[1] = rotateControl(&rotateControllerHandle, chassis_ctrl_.target_wYaw, rmInfantry_WLR.frame.body_worldFrame.w[2]);
 		  yawRotateOut_T[0] = -yawRotateOut_T[1];
   
 		  /*inverse dynamics*/
 		  float in_Tp[2], in_F[2], out_T[2];
+      float out_torqueE[2], out_torqueA[2];
 		  for(int i = 0; i < 2 ;i++)
 		  {
 			  in_Tp[i] = lqrOutput_Tp[i] + phi0Compensation_Tp[i];
@@ -451,7 +514,7 @@ void Debug_PrintEngineModel() {
 		  float in_phi0[2], in_L0[2], out_phi1[2], out_phi4[2];
 		  for(int i = 0; i <2; i++){
 			  in_phi0[i] = target_phi0[i];
-			  in_L0[i] = chassis_cmd.target_L0[i];
+			  in_L0[i] = chassis_ctrl_.target_L0[i];
 		  }
 		  Engine_InverseKinematics(&rmInfantry_WLR, in_phi0, in_L0, NULL, out_phi1, out_phi4);
   
@@ -469,44 +532,63 @@ void Debug_PrintEngineModel() {
 				  out_phi4[i] = PI - CHASSIS_HIPJOINT_MIN_POS;
 			  }
 		  }
-
+      //fivelink joint frame map to joint space 
+      for(int i = 0; i < 2; i++){
+        hipJoint_setP[i*2 + 0] = out_phi1[i];
+        hipJoint_setP[i*2 + 1] = out_phi4[i];
+        hipJoint_setT[i*2 + 0] = out_torqueA[i];
+        hipJoint_setT[i*2 + 1] = out_torqueE[i];
+      }
 		  for(int i=0; i < 4; i++){
-			  hipJoint_setP[i] = (hipJointConfig[i].ifInvertPos ? -1 : 1) * ((i < 2 ? out_phi1[i] : out_phi4[3-i]) - hipJointConfig[i].posOffset);
+			  hipJoint_setP[i] = (hipJointConfig[i].ifInvertPos ? -1 : 1) * (hipJoint_setP[i] - hipJointConfig[i].posOffset);
 			  hipJoint_setV[i] = 0;
-			  hipJoint_setT[i] = (hipJointConfig[i].ifInvertTorque ? -1 : 1) * (i < 2 ? out_torqueA[i] : out_torqueE[3-i]);
+			  hipJoint_setT[i] = (hipJointConfig[i].ifInvertTorque ? -1 : 1) * hipJoint_setT[i];
+        uint8_t index = hipJointConfig[i].index;
+        chassis_cmd_.joint[index].mode = 0;
+        chassis_cmd_.joint[index].q = hipJoint_setP[i];
+        chassis_cmd_.joint[index].dq = hipJoint_setV[i];
+        chassis_cmd_.joint[index].tau = hipJoint_setT[i];
+        chassis_cmd_.joint[index].p_kp = 0;
+        chassis_cmd_.joint[index].p_kd = 0;
+        chassis_cmd_.joint[index].v_kp = 0;
+        chassis_cmd_.joint[index].v_kd = 0;
 		  }
 		  for(int i = 0; i < 2; i++){
 			  wheelJoint_setT[i] = (wheelJointConfig[i].ifInvertTorque ? -1 : 1) * out_T[i];
-			  wheelTorque[i] = wheelJoint_setT[i];
+
+        uint8_t index = wheelJointConfig[i].index;
+        chassis_cmd_.joint[index].mode = 0;
+        chassis_cmd_.joint[index].q = 0;
+        chassis_cmd_.joint[index].dq = 0;
+        chassis_cmd_.joint[index].tau = wheelJoint_setT[i];
+        chassis_cmd_.joint[index].p_kp = 0;
+        chassis_cmd_.joint[index].p_kd = 0;
+        chassis_cmd_.joint[index].v_kp = 0;
+        chassis_cmd_.joint[index].v_kd = 0;
       }
-		//  vTaskDelay(steptime);
+
     std::this_thread::sleep_for(std::chrono::milliseconds(steptime)); // 1kHz
     }  
   }
-  /*任务控制参数设置*/
-  const uint8_t steptime = 4; // 4ms运行一次
-  float out_torqueE[2], out_torqueA[2];
-  float hipJoint_setP[4]={0};
-  float hipJoint_setV[4]={0};
-  float hipJoint_setT[4]={0};
-  float wheelJoint_setT[2]={0};
-  float wheelTorque[2] = {0};
-  float xdot[2][6*1]= {{0}};
-  ChassisCmd chassis_cmd;
-  ChassisState chassis_state;
+  
+  chassis_control::Ctrl chassis_ctrl_;
+  chassis_control::Cmd chassis_cmd_;
+  chassis_control::State chassis_state_;
+
   LQRControllerHandle_t lqrControllerHandle[2];	//lqr controller
   LegControllerHandle_t leg_ControllerHandle;		//leg controller
   pid_type_def rotateControllerHandle;			    //rotate controller
   // SlipDetectionHandle_t slipDetection_handle;
+
   std::thread chassis_task_thread_;
-  // std::atomic<bool> data_exchange_running_;
   rclcpp::Subscription<wheel_legged_msgs::msg::IMUState>::SharedPtr chassis_imuState_subscriber_;
-  rclcpp::Subscription<wheel_legged_msgs::msg::ChassisCmd>::SharedPtr chassis_cmd_subscriber_;
+  rclcpp::Subscription<wheel_legged_msgs::msg::ChassisCtrl>::SharedPtr chassis_ctrl_subscriber_;
+  rclcpp::Publisher<wheel_legged_msgs::msg::ChassisState>::SharedPtr chassis_state_publisher_;
   rclcpp::Subscription<wheel_legged_msgs::msg::ChassisJointState>::SharedPtr chassis_jointState_subscriber_;
   rclcpp::Publisher<wheel_legged_msgs::msg::ChassisJointCmd>::SharedPtr chassis_jointCmd_publisher_;
   rclcpp::TimerBase::SharedPtr chassis_jointCmd_pubTimer_;
+  rclcpp::TimerBase::SharedPtr chassis_state_pubTimer_;
   rclcpp::TimerBase::SharedPtr debug_timer_;
-
 };
 
 int main(int argc, char ** argv){
