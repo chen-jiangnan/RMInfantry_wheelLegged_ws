@@ -5,11 +5,11 @@
 #include <Eigen/Dense>
 #include <Eigen/src/Core/Matrix.h>
 
-#define LEGCONTROL_SPRINGDAMPING_PID_POSITION_KP 400.0f
-#define LEGCONTROL_SPRINGDAMPING_PID_POSITION_KI    0.0f
-#define LEGCONTROL_SPRINGDAMPING_PID_POSITION_KD  40.0f
+#define LEGCONTROL_SPRINGDAMPING_PID_POSITION_KP 800.0f
+#define LEGCONTROL_SPRINGDAMPING_PID_POSITION_KI   0.0f
+#define LEGCONTROL_SPRINGDAMPING_PID_POSITION_KD  80.0f
 
-#define LEGCONTROL_COMPENSATIONROLL_PID_POSITION_KP    0.0f
+#define LEGCONTROL_COMPENSATIONROLL_PID_POSITION_KP    -0.0f
 #define LEGCONTROL_COMPENSATIONROLL_PID_POSITION_KI    0.0f
 #define LEGCONTROL_COMPENSATIONROLL_PID_POSITION_KD    0.0f
 
@@ -30,7 +30,7 @@ typedef struct{
 	  float compensation_tp;
   }base[2];
   pid_type_def compensationRoll;    //机体roll角补偿控制器
-  pid_type_def compensationPhi0;   //theta补偿控制器  
+  pid_type_def compensationPhi0;    //theta补偿控制器  
 }LegControllerHandle_t;
 
 

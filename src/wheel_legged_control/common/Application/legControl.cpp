@@ -19,7 +19,7 @@
   */
   #include "legControl.hpp"
 
-  #define BODY_GRIVITY 9.3079*9.8
+  #define BODY_GRIVITY 12.1846*9.8
   
   /** 
     * @brief          init legController handle
