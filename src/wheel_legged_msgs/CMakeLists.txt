@@ -15,8 +15,20 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 
 set(msg_files
+  # Common MSG
+  "msg/Common/Controller/PidControllerTrace.msg"
+
   # High Level Control MSG
-  "msg/HighLevelControl/Sport/ChassisCmd.msg"
+  "msg/HighLevelControl/Sport/WheelLegged/BodyWorldFrame.msg"
+  "msg/HighLevelControl/Sport/WheelLegged/FiveLinkJointFrame.msg"
+  "msg/HighLevelControl/Sport/WheelLegged/FiveLinkForceFrame.msg"
+  "msg/HighLevelControl/Sport/WheelLegged/LegVmcJointFrame.msg"
+  "msg/HighLevelControl/Sport/WheelLegged/LegVmcForceFrame.msg"
+  "msg/HighLevelControl/Sport/WheelLegged/LqrControllerTrace.msg"
+  "msg/HighLevelControl/Sport/WheelLegged/LegControllerTrace.msg"
+
+  "msg/HighLevelControl/Sport/ChassisCtrl.msg"
+  "msg/HighLevelControl/Sport/ChassisState.msg"
 
   "msg/HighLevelControl/JointCmd.msg"
   "msg/HighLevelControl/JointState.msg"
