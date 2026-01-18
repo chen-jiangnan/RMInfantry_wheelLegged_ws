@@ -14,6 +14,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(wheel_legged_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 set(src_files
   "common/Application/legControl.cpp"
@@ -21,9 +22,10 @@ set(src_files
   "common/Controllers/lqr.cpp"
   "common/Controllers/pid.cpp"
   "common/Engine/engine.cpp"
+  "common/FSM/jointFSM.cpp"
 
 )
-
+# chassis_control
 add_executable(chassis_control 
   src/chassis_control.cpp
   ${src_files}
@@ -37,6 +39,7 @@ ament_target_dependencies(
   chassis_control
   "rclcpp"
   "wheel_legged_msgs"
+  "sensor_msgs"
 )
 target_link_libraries(chassis_control 
   Eigen3::Eigen
@@ -45,6 +48,28 @@ target_link_libraries(chassis_control
 install(TARGETS chassis_control
   DESTINATION lib/${PROJECT_NAME})
 
+# wheellegged_fsm
+add_executable(wheellegged_fsm 
+  src/wheellegged_fsm.cpp
+  ${src_files}
+)
+target_include_directories(wheellegged_fsm PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/common>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(wheellegged_fsm PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+ament_target_dependencies(
+  wheellegged_fsm
+  "rclcpp"
+  "wheel_legged_msgs"
+  "sensor_msgs"
+)
+target_link_libraries(wheellegged_fsm 
+  Eigen3::Eigen
+)
+
+install(TARGETS wheellegged_fsm
+  DESTINATION lib/${PROJECT_NAME})
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
