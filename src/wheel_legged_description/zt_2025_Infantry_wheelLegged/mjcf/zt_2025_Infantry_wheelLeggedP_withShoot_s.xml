@@ -218,6 +218,7 @@
     <jointpos name="gimbal_yaw_pos" joint="gimbal_yaw_joint" />
     <jointpos name="gimbal_pitch_pos" joint="gimbal_pitch_motor_joint" />
     <jointpos name="left_frition_wheel_pos" joint="left_frition_wheel_joint" />
+    <jointpos name="right_frition_wheel_pos" joint="right_frition_wheel_joint" />
     <jointpos name="feeder_desk_pos" joint="feeder_desk_joint" />
 
     <jointvel name="left_front_hip_vel" joint="left_front_hip_joint" />
@@ -229,6 +230,7 @@
     <jointvel name="gimbal_yaw_vel" joint="gimbal_yaw_joint" />
     <jointvel name="gimbal_pitch_vel" joint="gimbal_pitch_motor_joint" />
     <jointvel name="left_frition_wheel_vel" joint="left_frition_wheel_joint" />
+    <jointvel name="right_frition_wheel_vel" joint="right_frition_wheel_joint" />
     <jointvel name="feeder_desk_vel" joint="feeder_desk_joint" />
 
     <jointactuatorfrc name="left_front_hip_torque" joint="left_front_hip_joint" noise="0.01"/>
@@ -240,6 +242,7 @@
     <jointactuatorfrc name="gimbal_yaw_torque" joint="gimbal_yaw_joint" noise="0.01"/>
     <jointactuatorfrc name="gimbal_pitch_torque" joint="gimbal_pitch_motor_joint" noise="0.01"/>
     <jointactuatorfrc name="left_frition_wheel_torque" joint="left_frition_wheel_joint" noise="0.01"/>
+    <jointactuatorfrc name="right_frition_wheel_torque" joint="right_frition_wheel_joint" noise="0.01"/>
     <jointactuatorfrc name="feeder_desk_torque" joint="feeder_desk_joint" noise="0.01"/>
 
     <framequat name="chassis_imu_quat" objtype="site" objname="imu" />
