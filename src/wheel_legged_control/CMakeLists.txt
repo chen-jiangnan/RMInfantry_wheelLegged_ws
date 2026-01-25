@@ -19,6 +19,7 @@ find_package(sensor_msgs REQUIRED)
 set(src_files
   "common/Application/legControl.cpp"
   "common/Application/rotateControl.cpp"
+  "common/Application/stateEstimate.cpp"
   "common/Controllers/lqr.cpp"
   "common/Controllers/pid.cpp"
   "common/Engine/engine.cpp"

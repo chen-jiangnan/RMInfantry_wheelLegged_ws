@@ -14,6 +14,7 @@
 #include <wheel_legged_msgs/msg/detail/chassis_state__struct.hpp>
 #include "Application/legControl.hpp"
 #include "Application/rotateControl.hpp"
+#include "Application/stateEstimate.hpp"
 #include "Controllers/lqr.hpp"
 #include "Engine/engine.hpp"
 #include "wheel_legged_msgs/msg/imu_state.hpp"
@@ -285,7 +286,7 @@ void Debug_PrintEngineModel() {
     }
     for(int i = 0; i<2; i++){
       // chassis_cmd.target_L0[i]=msg->target_l0[i];
-      chassis_ctrl_.target_L0[i] = 0.20;
+      chassis_ctrl_.target_L0[i] = msg->target_l0[i];
       chassis_ctrl_.target_fs[i] = msg->target_fs[i];    
     }
     chassis_ctrl_.target_Roll = msg->target_roll;
@@ -313,6 +314,13 @@ void Debug_PrintEngineModel() {
     msg.body_worldframe.rpy[0] = rmInfantry_WLR.frame.body_worldFrame.roll;
     msg.body_worldframe.rpy[1] = rmInfantry_WLR.frame.body_worldFrame.pitch;
     msg.body_worldframe.rpy[2] = rmInfantry_WLR.frame.body_worldFrame.yaw;
+    msg.body_worldframe.gyro[0] = rmInfantry_WLR.frame.body_worldFrame.w[0];
+    msg.body_worldframe.gyro[1] = rmInfantry_WLR.frame.body_worldFrame.w[1];
+    msg.body_worldframe.gyro[2] = rmInfantry_WLR.frame.body_worldFrame.w[2];
+    msg.body_worldframe.acc[0] = rmInfantry_WLR.frame.body_worldFrame.a[0];
+    msg.body_worldframe.acc[1] = rmInfantry_WLR.frame.body_worldFrame.a[1];
+    msg.body_worldframe.acc[2] = rmInfantry_WLR.frame.body_worldFrame.a[2];
+
     for(int i = 0; i < 2; i++){
       msg.fivelink_forceframe[i].fx = rmInfantry_WLR.frame.fiveLink_forceFrame[i].Fx;
       msg.fivelink_forceframe[i].fy = rmInfantry_WLR.frame.fiveLink_forceFrame[i].Fy;
@@ -359,6 +367,19 @@ void Debug_PrintEngineModel() {
     msg.rotatectrl.fdb = rotateControllerHandle.fdb;
     msg.rotatectrl.out = rotateControllerHandle.out;
 
+    for(int i = 0; i < 2; i++){
+      for(int j = 0; j < 3; j++){
+        msg.state_est.fn_est[i].theta[j] = stateEstimatorHandle.FnEst[i].theta[j];
+        msg.state_est.fn_est[i].l0[j] = stateEstimatorHandle.FnEst[i].L0[j];
+      }
+      msg.state_est.fn_est[i].ddot_zb = stateEstimatorHandle.FnEst[i].ddot_zb;
+      msg.state_est.fn_est[i].ddot_zw = stateEstimatorHandle.FnEst[i].ddot_zw;
+      msg.state_est.fn_est[i].fn = stateEstimatorHandle.FnEst[i].Fn;
+      msg.state_est.fn_est[i].ddot_l0 = stateEstimatorHandle.FnEst[i].ddot_L0;
+      msg.state_est.fn_est[i].dot_l0 = stateEstimatorHandle.FnEst[i].dot_L0;
+      msg.state_est.fn_est[i].ddot_theta = stateEstimatorHandle.FnEst[i].ddot_theta;
+      msg.state_est.fn_est[i].dot_theta = stateEstimatorHandle.FnEst[i].dot_theta;
+    }
     chassis_state_publisher_->publish(msg);
   }
 
@@ -371,13 +392,14 @@ void Debug_PrintEngineModel() {
 	  LQRControllerInit(&lqrControllerHandle[1]);
 	  legControllerInit(&leg_ControllerHandle);
 	  rotateControllerInit(&rotateControllerHandle);
+    stateEstimatorInit(&stateEstimatorHandle);
   
 	  // SlipDetection_Init(&slipDetection_handle, 0.2, 0.05, 0.1);
     /*任务控制参数设置*/
     const uint8_t steptime = 4; // 4ms运行一次
 
-	  chassis_ctrl_.target_L0[0] = 0.20;
-	  chassis_ctrl_.target_L0[1] = 0.20;
+	  chassis_ctrl_.target_L0[0] = 0.15;
+	  chassis_ctrl_.target_L0[1] = 0.15;
     
     float xdot[2][6*1]= {{0}};
     float hipJoint_setP[4]={0};
@@ -392,10 +414,12 @@ void Debug_PrintEngineModel() {
 		  rmInfantry_WLR.frame.body_worldFrame.yaw =      chassis_state_.imu.yaw ;
 		  rmInfantry_WLR.frame.body_worldFrame.pitch =   -chassis_state_.imu.pitch;
 		  /*update body gyro data*/
-		  rmInfantry_WLR.frame.body_worldFrame.w[0] = -chassis_state_.imu.gyr[1];
-		  rmInfantry_WLR.frame.body_worldFrame.w[2] =  chassis_state_.imu.gyr[2];
-		  rmInfantry_WLR.frame.body_worldFrame.w[1] = -chassis_state_.imu.gyr[0];
-
+		  rmInfantry_WLR.frame.body_worldFrame.w[0] =  -chassis_state_.imu.gyr[0];
+		  rmInfantry_WLR.frame.body_worldFrame.w[1] =  -chassis_state_.imu.gyr[1];
+		  rmInfantry_WLR.frame.body_worldFrame.w[2] =   chassis_state_.imu.gyr[2];
+      rmInfantry_WLR.frame.body_worldFrame.a[0] =  -chassis_state_.imu.acc[0];
+		  rmInfantry_WLR.frame.body_worldFrame.a[1] =  -chassis_state_.imu.acc[1];
+		  rmInfantry_WLR.frame.body_worldFrame.a[2] =  chassis_state_.imu.acc[2] - 9.8;
       /*update joint data*/
 		  for(int i = 0; i < 4; i++){
 			  // map to the kinmatics equation(fivelink frame)
@@ -494,6 +518,17 @@ void Debug_PrintEngineModel() {
 		  }
 		  Engine_InverseDynamics(&rmInfantry_WLR, in_Tp, in_F, out_torqueA, out_torqueE, 1);
 
+      /*Fn Estimate*/
+      FnEstimateUpdate(&stateEstimatorHandle, 
+        rev_theta,
+        out_L0,
+        in_F,
+        in_Tp,
+        rmInfantry_WLR.frame.body_worldFrame.a[2],
+        rmInfantry_WLR.link.wheelLink->mass,
+        (float)steptime/1000.0f
+        );
+
 		  /*calculate system state-space X_dot  = A*X + B*U*/
 		  float target_phi0[2] = {0};
 		  float target_theta[2] = {0};
@@ -517,6 +552,8 @@ void Debug_PrintEngineModel() {
 			  in_L0[i] = chassis_ctrl_.target_L0[i];
 		  }
 		  Engine_InverseKinematics(&rmInfantry_WLR, in_phi0, in_L0, NULL, out_phi1, out_phi4);
+
+
   
 		  /*PT-Mix Control*/
 		  // limit the q-v-t value
@@ -578,6 +615,7 @@ void Debug_PrintEngineModel() {
   LQRControllerHandle_t lqrControllerHandle[2];	//lqr controller
   LegControllerHandle_t leg_ControllerHandle;		//leg controller
   pid_type_def rotateControllerHandle;			    //rotate controller
+  StateEstimatorHandle_t stateEstimatorHandle;
   // SlipDetectionHandle_t slipDetection_handle;
 
   std::thread chassis_task_thread_;

@@ -1,7 +1,7 @@
 <mujoco model="Infantry_wheelLegged scene">
   <include file="zt_2025_Infantry_wheelLeggedP_withShoot_s.xml"/>
 
-  <statistic center="0 0 0.1" extent="0.8"/>
+  <statistic center="0 0 0.4" extent="0.8"/>
 
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
@@ -20,7 +20,7 @@
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
 
-    <geom pos="-2 0 0.0" type="box"  size="0.5 2 0.4" quat="1.0 0 0 0"/>
+    <geom pos="-2 0 0.0" type="box"  size="2 2 0.4" quat="1.0 0 0 0"/>
 
     <geom pos="0.8 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
     <geom pos="1.2 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
