@@ -17,6 +17,7 @@ find_package(std_msgs REQUIRED)
 set(msg_files
   # Common MSG
   "msg/Common/Controller/PidControllerTrace.msg"
+  "msg/Common/Obersver/FnEstimatorTrace.msg"
 
   # High Level Control MSG
   "msg/HighLevelControl/Sport/WheelLegged/BodyWorldFrame.msg"
@@ -26,6 +27,7 @@ set(msg_files
   "msg/HighLevelControl/Sport/WheelLegged/LegVmcForceFrame.msg"
   "msg/HighLevelControl/Sport/WheelLegged/LqrControllerTrace.msg"
   "msg/HighLevelControl/Sport/WheelLegged/LegControllerTrace.msg"
+  "msg/HighLevelControl/Sport/WheelLegged/StateEstimatorTrace.msg"
 
   "msg/HighLevelControl/Sport/ChassisCtrl.msg"
   "msg/HighLevelControl/Sport/ChassisState.msg"

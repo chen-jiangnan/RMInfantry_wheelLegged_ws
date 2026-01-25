@@ -9,3 +9,4 @@ BodyWorldFrame     body_worldframe
 LqrControllerTrace[2] lqrctrl
 LegControllerTrace legctrl
 PidControllerTrace rotatectrl
+StateEstimatorTrace state_est
