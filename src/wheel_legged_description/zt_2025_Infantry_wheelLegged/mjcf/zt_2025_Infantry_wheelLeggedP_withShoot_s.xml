@@ -81,17 +81,17 @@
 
   <worldbody>
     <body name="base_link" pos="-0.5 0 0.5" childclass="RMInfantry_wheelLegged">
-      <inertial pos="-0.003111 0.0015208 0.10627" quat="0.00205399 0.707016 0.00191127 0.707192" mass="9.774" diaginertia="0.0548401 0.0519599 0.018047"/>
+      <inertial pos="-0.003111 0.0015208 0.10627" quat="0.00205399 0.707016 0.00191127 0.707192" mass="16.7749" diaginertia="0.0548401 0.0519599 0.018047"/>
       <joint name="floating_base_joint" type="free"/>
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.50196 0.50196 0.50196 1" mesh="base_link"/>
-      <!-- <geom type="box"  size="0.265 0.1 0.1" pos="0 0 0.1"rgba="1 0.0 0.0 1"  class="collision"/> -->
+      <geom type="box"  size="0.265 0.1 0.1" pos="0 0 0.1"rgba="1 0.0 0.0 1"  class="collision"/>
       <site name="imu" pos="0 0 0"/>
       <body name="left_front_hip_link" pos="0.065 0.1423 0.127">
-        <inertial pos="0.032281 0.032438 0.011151" quat="0.574502 0.412247 0.412247 0.574502" mass="0.2528" diaginertia="0.00064137 0.000572305 8.22754e-05"/>
+        <inertial pos="0.032281 0.032438 0.011151" quat="0.574502 0.412247 0.412247 0.574502" mass="0.252798" diaginertia="0.00064137 0.000572305 8.22754e-05"/>
         <joint name="left_front_hip_joint" pos="0 0 0" axis="0 1 0" range="0 1.48353" class='hip_joint'/>
         <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.89804 0.91373 0.92549 1" mesh="left_front_hip_link"/>
         <body name="left_front_knee_link" pos="0.12968 0.0194 0.047199">
-          <inertial pos="-0.089345 0.006 -0.086713" quat="0.646507 0.286406 0.286406 0.646507" mass="0.21937" diaginertia="0.0018691 0.00181967 5.46815e-05"/>
+          <inertial pos="-0.089345 0.006 -0.086713" quat="0.646507 0.286406 0.286406 0.646507" mass="0.219372" diaginertia="0.0018691 0.00181967 5.46815e-05"/>
           <joint name="left_front_knee_joint" pos="0 0 0" axis="0 1 0"/>
 
           <site name="left_front_knee_site1" pos="-0.19468 0.0245 -0.17534" size="0.005" rgba="1 0 0 1"/>
@@ -104,11 +104,11 @@
         <joint name="left_rear_hip_joint" pos="0 0 0" axis="0 1 0" range="-1.48353 0" class='hip_joint'/>
         <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.898039 0.913725 0.92549 1" mesh="left_rear_hip_link"/>
         <body name="left_rear_knee_link" pos="-0.12968 0.0309 0.047199">
-          <inertial pos="0.10163 0.02 -0.097327" quat="0.28954 0.64511 0.64511 0.28954" mass="0.2214" diaginertia="0.0021043 0.00201488 9.47394e-05"/>
+          <inertial pos="0.10163 0.02 -0.097327" quat="0.28954 0.64511 0.64511 0.28954" mass="0.221401" diaginertia="0.0021043 0.00201488 9.47394e-05"/>
           <joint name="left_rear_knee_joint" pos="0 0 0" axis="0 1 0"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="left_rear_knee_link"/>
           <body name="left_chassis_wheel_link" pos="0.19468 0.013 -0.17534">
-            <inertial pos="-5.5954e-06 0.036068 -3.5474e-06" quat="0.270622 0.653296 0.653256 0.270601" mass="0.52417" diaginertia="0.0011204 0.000600313 0.000600287"/>
+            <inertial pos="-5.5954e-06 0.036068 -3.5474e-06" quat="0.270622 0.653296 0.653256 0.270601" mass="1.24506" diaginertia="0.0011204 0.000600313 0.000600287"/>
             <joint name="left_chassis_wheel_joint" pos="0 0 0" axis="0 1 0" class='wheel_joint'/>
             <site name="left_chassis_wheel_site1" pos="0 0 0" size="0.005" rgba="1 0 0 1"/>
             <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="left_chassis_wheel_link"/>
@@ -117,11 +117,11 @@
         </body>
       </body>
       <body name="right_front_hip_link" pos="0.065 -0.1423 0.127">
-        <inertial pos="0.032281 -0.032438 0.011151" quat="0.574502 0.412247 0.412247 0.574502" mass="0.2528" diaginertia="0.00064137 0.000572305 8.22754e-05"/>
+        <inertial pos="0.032281 -0.032438 0.011151" quat="0.574502 0.412247 0.412247 0.574502" mass="0.252798" diaginertia="0.00064137 0.000572305 8.22754e-05"/>
         <joint name="right_front_hip_joint" pos="0 0 0" axis="0 -1 0" range="-1.48353 0" class='hip_joint'/>
         <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="right_front_hip_link"/>
         <body name="right_front_knee_link" pos="0.12968 -0.0194 0.047199">
-          <inertial pos="-0.089345 -0.006 -0.086713" quat="0.646507 0.286406 0.286406 0.646507" mass="0.21937" diaginertia="0.0018691 0.00181967 5.46815e-05"/>
+          <inertial pos="-0.089345 -0.006 -0.086713" quat="0.646507 0.286406 0.286406 0.646507" mass="0.219372" diaginertia="0.0018691 0.00181967 5.46815e-05"/>
           <joint name="right_front_knee_joint" pos="0 0 0" axis="0 -1 0"/>
           <site name="right_front_knee_site1" pos="-0.19468 -0.0245 -0.17534" size="0.005" rgba="1 0 0 1"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="right_front_knee_link"/>
@@ -132,7 +132,7 @@
         <joint name="right_rear_hip_joint" pos="0 0 0" axis="0 -1 0" range="0 1.48353" class='hip_joint'/>
         <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.89804 0.91373 0.92549 1" mesh="right_rear_hip_link"/>
         <body name="right_rear_knee_link" pos="-0.12968 -0.0309 0.047199">
-          <inertial pos="0.10163 -0.02 -0.097327" quat="0.28954 0.64511 0.64511 0.28954" mass="0.2214" diaginertia="0.0021043 0.00201488 9.47394e-05"/>
+          <inertial pos="0.10163 -0.02 -0.097327" quat="0.28954 0.64511 0.64511 0.28954" mass="0.221401" diaginertia="0.0021043 0.00201488 9.47394e-05"/>
           <joint name="right_rear_knee_joint" pos="0 0 0" axis="0 -1 0"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="right_rear_knee_link"/>
           <body name="right_chassis_wheel_link" pos="0.19468 -0.013 -0.17534">
