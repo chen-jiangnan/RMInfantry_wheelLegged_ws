@@ -22,6 +22,7 @@ set(src_files
   "common/Application/stateEstimate.cpp"
   "common/Controllers/lqr.cpp"
   "common/Controllers/pid.cpp"
+  "common/Filter/kalman_filter.cpp"
   "common/Engine/engine.cpp"
   "common/FSM/jointFSM.cpp"
 
