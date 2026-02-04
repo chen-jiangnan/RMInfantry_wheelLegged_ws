@@ -78,16 +78,10 @@ private:
       if(msg->buttons[7] == 1){fsm_->setDampingState();} //Y
       if(msg->buttons[6] == 1){fsm_->setCaliState();} //Y
       if(msg->buttons[11] == 1){fsm_->setZeroTauState();} //
-      chassis_ctrl_.target_x[3] = msg->axes[1];
+      chassis_ctrl_.target_x[3] = msg->axes[1]*2;
       if(msg->buttons[0] == 1){
         jump_signal_ = true;
       }
-        // chassis_ctrl_.target_fs[0] = chassis_ctrl_.target_fs[1]= 130;
-        // chassis_ctrl_.target_L0[0] = chassis_ctrl_.target_L0[1]= 0.32;
-      // }else{
-      //   chassis_ctrl_.target_fs[0] = chassis_ctrl_.target_fs[1]= 0;
-      //   chassis_ctrl_.target_L0[0] = chassis_ctrl_.target_L0[1]= 0.15;
-      // }
     }
     void ChassisState_callback(const wheel_legged_msgs::msg::ChassisState::SharedPtr msg){
       test_L0_[0] = msg->fivelink_jointframe[0].l0;
@@ -98,9 +92,11 @@ private:
     }
     void ChassisCtrl_timCallback(){
       auto msg = wheel_legged_msgs::msg::ChassisCtrl();
+      chassis_ctrl_.target_x[2] += chassis_ctrl_.target_x[3]*0.01;
       for(int i = 0; i<6; i++){
         msg.target_x[i] = chassis_ctrl_.target_x[i];
       }
+      msg.target_x[3]=0;
       for(int i = 0; i<2; i++){
         msg.target_fs[i] = chassis_ctrl_.target_fs[i];
         msg.target_l0[i] = chassis_ctrl_.target_L0[i];    

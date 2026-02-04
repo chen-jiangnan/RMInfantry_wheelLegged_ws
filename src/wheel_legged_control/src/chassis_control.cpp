@@ -43,9 +43,7 @@ namespace chassis_control{
     float quaternion[4];
     float gyr[3];
     float acc[3];
-    float roll;
-    float pitch;
-    float yaw;
+    float rpy[3];
   };
   class JointState{
   public:
@@ -111,9 +109,9 @@ public:
     chassis_state_pubTimer_ = this->create_wall_timer(
       std::chrono::milliseconds(1),  // 1000Hz
       std::bind(&ChassisControlNode::ChassisState_timCallback, this));
-    debug_timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(100), // 10Hz
-      std::bind(&ChassisControlNode::Debug_PrintEngineModel, this));
+    // debug_timer_ = this->create_wall_timer(
+    //   std::chrono::milliseconds(100), // 10Hz
+    //   std::bind(&ChassisControlNode::Debug_PrintEngineModel, this));
 
     // 创建任务线程
     chassis_task_thread_ = std::thread(&ChassisControlNode::Chassis_Task, this);   
@@ -124,153 +122,18 @@ public:
     }
   }
 private:
-void Debug_PrintEngineModel() {
-  std::cout << "\n========== EngineModel Debug Info ==========" << std::endl;
-  
-  // 打印身体姿态
-  std::cout << "\n--- Body World Frame ---" << std::endl;
-  std::cout << "Roll:  " << std::setw(10) << std::fixed << std::setprecision(4) << rmInfantry_WLR.frame.body_worldFrame.roll 
-            << " rad, Pitch: " << std::setw(10) << rmInfantry_WLR.frame.body_worldFrame.pitch
-            << " rad, Yaw: " << std::setw(10) << rmInfantry_WLR.frame.body_worldFrame.yaw << " rad" << std::endl;
-  std::cout << "Angular Vel: [" 
-            << std::setw(8) << rmInfantry_WLR.frame.body_worldFrame.w[0] << ", "
-            << std::setw(8) << rmInfantry_WLR.frame.body_worldFrame.w[1] << ", "
-            << std::setw(8) << rmInfantry_WLR.frame.body_worldFrame.w[2] << "] rad/s" << std::endl;
-  std::cout << "Acceleration: [" 
-            << std::setw(8) << rmInfantry_WLR.frame.body_worldFrame.a[0] << ", "
-            << std::setw(8) << rmInfantry_WLR.frame.body_worldFrame.a[1] << ", "
-            << std::setw(8) << rmInfantry_WLR.frame.body_worldFrame.a[2] << "] m/s²" << std::endl;
-  
-  // 打印关节状态（按左右侧）
-  for (int side = 0; side < 2; side++) {
-      std::cout << "\n--- " << (side == 0 ? "Left Side" : "Right Side") << " ---" << std::endl;
-      
-      // 5连杆关节帧
-      std::cout << "FiveLink Frame:" << std::endl;
-      std::cout << "  L0:  " << std::setw(10) << rmInfantry_WLR.frame.fiveLink_jointFrame[side].L0 << " m" << std::endl;
-      std::cout << "  Phi: [";
-      for (int i = 0; i < 5; i++) {
-          std::cout << std::setw(8) << rmInfantry_WLR.frame.fiveLink_jointFrame[side].phi[i];
-          if (i < 4) std::cout << ", ";
-      }
-      std::cout << "] rad" << std::endl;
-      
-      // VMC关节帧
-      std::cout << "VMC Joint Frame:" << std::endl;
-      std::cout << "  Theta: " << std::setw(10) << rmInfantry_WLR.frame.vmc_jointFrame[side].theta 
-                << " rad, APhi: " << std::setw(10) << rmInfantry_WLR.frame.vmc_jointFrame[side].aphi << " rad" << std::endl;
-      
-      // VMC力帧
-      std::cout << "VMC Force Frame:" << std::endl;
-      std::cout << "  Tp: " << std::setw(10) << rmInfantry_WLR.frame.vmc_forceFrame[side].Tp 
-                << " N·m, F: " << std::setw(10) << rmInfantry_WLR.frame.vmc_forceFrame[side].F << " N" << std::endl;
-      
-      // 髋关节（4个） - 修改为左: 0,3, 右: 1,2
-      std::cout << "Hip Joints:" << std::endl;
-      if (side == 0) {  // 左: 0,3
-          std::cout << "  Joint 0: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[0].q 
-                    << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[0].w 
-                    << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[0].t << " N·m" << std::endl;
-          std::cout << "  Joint 3: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[1].q 
-                    << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[1].w 
-                    << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[1].t << " N·m" << std::endl;
-      } else {  // 右: 1,2
-          std::cout << "  Joint 1: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[2].q 
-                    << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[2].w 
-                    << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[2].t << " N·m" << std::endl;
-          std::cout << "  Joint 2: q=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].q 
-                    << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].w 
-                    << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.hipJoint[3].t << " N·m" << std::endl;
-      }
-      
-      // 轮关节
-      std::cout << "Wheel Joint " << side << ":" << std::endl;
-      std::cout << "  q=" << std::setw(8) << rmInfantry_WLR.joint.wheelJoint[side].q 
-                << " rad, w=" << std::setw(8) << rmInfantry_WLR.joint.wheelJoint[side].w 
-                << " rad/s, t=" << std::setw(8) << rmInfantry_WLR.joint.wheelJoint[side].t << " N·m" << std::endl;
-  }
-  
-  std::cout << "============================================\n" << std::endl;
-
-  std::ios_base::fmtflags old_flags = std::cout.flags();
-  std::streamsize old_precision = std::cout.precision();
-  
-  std::cout << std::fixed << std::setprecision(4);
-  
-  for (int ctrl_idx = 0; ctrl_idx < 2; ctrl_idx++) {
-      std::cout << "[" << (ctrl_idx == 0 ? "Left" : "Right") << " Leg LQR Controller]" << std::endl;
-      
-      const auto& lqr = lqrControllerHandle[ctrl_idx];
-      
-      // 打印 Gain 矩阵 (2x6)
-      std::cout << "  Gain Matrix (2x6):" << std::endl;
-      // for (int i = 0; i < 2; i++) {
-      //     std::cout << "    Row " << i << ": [";
-      //     for (int j = 0; j < 6; j++) {
-      //         std::cout << std::setw(8) << lqr.Gain.matrixHandle.data()[i*6 + j];
-      //         if (j < 5) std::cout << ", ";
-      //     }
-      //     std::cout << "]" << std::endl;
-      // }
-      std::cout<<lqr.Gain.matrixHandle << std::endl;
-      
-      // 打印状态 X (6x1)
-      std::cout << "\n  State X (6x1):" << std::endl;
-      std::cout << "    Theta:    " << std::setw(8) << lqr.X.matrixHandle.data()[0] << " rad" << std::endl;
-      std::cout << "    Theta_dot:" << std::setw(8) << lqr.X.matrixHandle.data()[1] << " rad/s" << std::endl;
-      std::cout << "    x:        " << std::setw(8) << lqr.X.matrixHandle.data()[2] << " m" << std::endl;
-      std::cout << "    x_dot:    " << std::setw(8) << lqr.X.matrixHandle.data()[3] << " m/s" << std::endl;
-      std::cout << "    Phi:      " << std::setw(8) << lqr.X.matrixHandle.data()[4] << " rad" << std::endl;
-      std::cout << "    Phi_dot:  " << std::setw(8) << lqr.X.matrixHandle.data()[5] << " rad/s" << std::endl;
-      
-      // 打印期望状态 Xd (6x1)
-      std::cout << "\n  Desired State Xd (6x1):" << std::endl;
-      std::cout << "    Theta:    " << std::setw(8) << lqr.Xd.matrixHandle.data()[0] << " rad" << std::endl;
-      std::cout << "    Theta_dot:" << std::setw(8) << lqr.Xd.matrixHandle.data()[1] << " rad/s" << std::endl;
-      std::cout << "    x:        " << std::setw(8) << lqr.Xd.matrixHandle.data()[2] << " m" << std::endl;
-      std::cout << "    x_dot:    " << std::setw(8) << lqr.Xd.matrixHandle.data()[3] << " m/s" << std::endl;
-      std::cout << "    Phi:      " << std::setw(8) << lqr.Xd.matrixHandle.data()[4] << " rad" << std::endl;
-      std::cout << "    Phi_dot:  " << std::setw(8) << lqr.Xd.matrixHandle.data()[5] << " rad/s" << std::endl;
-      
-      // 打印误差 Err (6x1)
-      std::cout << "\n  Error (Xd - X) (6x1):" << std::endl;
-      std::cout << "    dTheta:   " << std::setw(8) << lqr.Err.matrixHandle.data()[0] << " rad" << std::endl;
-      std::cout << "    dTheta_dot:" << std::setw(7) << lqr.Err.matrixHandle.data()[1] << " rad/s" << std::endl;
-      std::cout << "    dx:       " << std::setw(8) << lqr.Err.matrixHandle.data()[2] << " m" << std::endl;
-      std::cout << "    dx_dot:   " << std::setw(8) << lqr.Err.matrixHandle.data()[3] << " m/s" << std::endl;
-      std::cout << "    dPhi:     " << std::setw(8) << lqr.Err.matrixHandle.data()[4] << " rad" << std::endl;
-      std::cout << "    dPhi_dot: " << std::setw(8) << lqr.Err.matrixHandle.data()[5] << " rad/s" << std::endl;
-      
-      // 打印输出 Out (2x1)
-      std::cout << "\n  Control Output (2x1):" << std::endl;
-      std::cout << "    T: " << std::setw(10) << lqr.Out.matrixHandle.data()[0] << " N·m (绕机体转轴力矩)" << std::endl;
-      std::cout << "    Tp:  " << std::setw(10) << lqr.Out.matrixHandle.data()[1] << " N·m (驱动轮力矩)" << std::endl;
-      
-      if (ctrl_idx < 2 - 1) {
-          std::cout << "\n" << std::string(50, '-') << "\n" << std::endl;
-      }
-  }
-  
-  std::cout << "\n============================================\n" << std::endl;
-  
-  // 恢复cout状态
-  std::cout.flags(old_flags);
-  std::cout.precision(old_precision);
-  
-}
 
   void ChassisIMUState_callback(const wheel_legged_msgs::msg::IMUState::SharedPtr msg){
-    for(int i = 0; i<4; i++){
+    for(int i = 0; i < 4; i++){
       chassis_state_.imu.quaternion[i] = msg->quaternion[i];
+      if (i < 3){
+        chassis_state_.imu.gyr[i] = msg->gyroscope[i];
+        chassis_state_.imu.acc[i] = msg->accelerometer[i];
+        chassis_state_.imu.rpy[i] = msg->rpy[i];
+      }
     }
-    for(int i = 0; i<3; i++){
-      chassis_state_.imu.gyr[i] = msg->gyroscope[i];
-      chassis_state_.imu.acc[i] = msg->accelerometer[i];
-    }
-    chassis_state_.imu.roll = msg->rpy[0];
-    chassis_state_.imu.pitch = msg->rpy[1];
-    chassis_state_.imu.yaw = msg->rpy[2];    
   }
+
   void ChassisJointState_callback(const wheel_legged_msgs::msg::ChassisJointState::SharedPtr msg){
     for(int i = 0; i < 6; i++){
       chassis_state_.joint[i].q = msg->joint_state[i].q;
@@ -282,16 +145,16 @@ void Debug_PrintEngineModel() {
   
   void ChassisCtrl_callback(const wheel_legged_msgs::msg::ChassisCtrl::SharedPtr msg){
     for(int i = 0; i<6; i++){
-      chassis_ctrl_.target_x[i]=msg->target_x[i];
+        chassis_ctrl_.target_x[i]=msg->target_x[i];
     }
     for(int i = 0; i<2; i++){
-      // chassis_cmd.target_L0[i]=msg->target_l0[i];
       chassis_ctrl_.target_L0[i] = msg->target_l0[i];
       chassis_ctrl_.target_fs[i] = msg->target_fs[i];    
     }
     chassis_ctrl_.target_Roll = msg->target_roll;
     chassis_ctrl_.target_wYaw = msg->target_wyaw;
   }
+
   void JointCmd_timCallback(){
     auto msg= wheel_legged_msgs::msg::ChassisJointCmd();
     for(int i = 0; i < 6; i++){
@@ -310,17 +173,11 @@ void Debug_PrintEngineModel() {
     auto msg = wheel_legged_msgs::msg::ChassisState();
     msg.header.frame_id = "chassis_state";
     msg.header.stamp = this->now();
-
-    msg.body_worldframe.rpy[0] = rmInfantry_WLR.frame.body_worldFrame.roll;
-    msg.body_worldframe.rpy[1] = rmInfantry_WLR.frame.body_worldFrame.pitch;
-    msg.body_worldframe.rpy[2] = rmInfantry_WLR.frame.body_worldFrame.yaw;
-    msg.body_worldframe.gyro[0] = rmInfantry_WLR.frame.body_worldFrame.w[0];
-    msg.body_worldframe.gyro[1] = rmInfantry_WLR.frame.body_worldFrame.w[1];
-    msg.body_worldframe.gyro[2] = rmInfantry_WLR.frame.body_worldFrame.w[2];
-    msg.body_worldframe.acc[0] = rmInfantry_WLR.frame.body_worldFrame.a[0];
-    msg.body_worldframe.acc[1] = rmInfantry_WLR.frame.body_worldFrame.a[1];
-    msg.body_worldframe.acc[2] = rmInfantry_WLR.frame.body_worldFrame.a[2];
-
+    for(int i = 0; i < 3; i++){
+      msg.body_worldframe.rpy[i] = rmInfantry_WLR.frame.body_worldFrame.rpy[i];
+      msg.body_worldframe.gyro[i] = rmInfantry_WLR.frame.body_worldFrame.w[i];
+      msg.body_worldframe.acc[i] = rmInfantry_WLR.frame.body_worldFrame.a[i];
+    }
     for(int i = 0; i < 2; i++){
       msg.fivelink_forceframe[i].fx = rmInfantry_WLR.frame.fiveLink_forceFrame[i].Fx;
       msg.fivelink_forceframe[i].fy = rmInfantry_WLR.frame.fiveLink_forceFrame[i].Fy;
@@ -333,8 +190,6 @@ void Debug_PrintEngineModel() {
       msg.legvmc_forceframe[i].tp = rmInfantry_WLR.frame.vmc_forceFrame[i].Tp;
       msg.legvmc_jointframe[i].theta = rmInfantry_WLR.frame.vmc_jointFrame[i].theta;
       msg.legvmc_jointframe[i].aphi = rmInfantry_WLR.frame.vmc_jointFrame[i].aphi;
-      msg.legvmc_jointframe[i].last_theta = rmInfantry_WLR.frame.vmc_jointFrame[i].last_theta;
-      msg.legvmc_jointframe[i].last_aphi = rmInfantry_WLR.frame.vmc_jointFrame[i].last_aphi;
     }
 
     for(int i = 0; i < 2; i++){
@@ -366,20 +221,16 @@ void Debug_PrintEngineModel() {
     msg.rotatectrl.set = rotateControllerHandle.set;
     msg.rotatectrl.fdb = rotateControllerHandle.fdb;
     msg.rotatectrl.out = rotateControllerHandle.out;
-
-    for(int i = 0; i < 2; i++){
-      for(int j = 0; j < 3; j++){
-        msg.state_est.fn_est[i].theta[j] = stateEstimatorHandle.FnEst[i].theta[j];
-        msg.state_est.fn_est[i].l0[j] = stateEstimatorHandle.FnEst[i].L0[j];
-      }
-      msg.state_est.fn_est[i].ddot_zb = stateEstimatorHandle.FnEst[i].ddot_zb;
-      msg.state_est.fn_est[i].ddot_zw = stateEstimatorHandle.FnEst[i].ddot_zw;
-      msg.state_est.fn_est[i].fn = stateEstimatorHandle.FnEst[i].Fn;
-      msg.state_est.fn_est[i].ddot_l0 = stateEstimatorHandle.FnEst[i].ddot_L0;
-      msg.state_est.fn_est[i].dot_l0 = stateEstimatorHandle.FnEst[i].dot_L0;
-      msg.state_est.fn_est[i].ddot_theta = stateEstimatorHandle.FnEst[i].ddot_theta;
-      msg.state_est.fn_est[i].dot_theta = stateEstimatorHandle.FnEst[i].dot_theta;
+    
+    for(int i = 0; i < 2; i ++){
+      msg.state_est.fn_est.ddot_zw[i] = stateEstimatorHandle.FnEst.ddot_zw[i];
+      msg.state_est.fn_est.fn[i] = stateEstimatorHandle.FnEst.Fn[i];
+      msg.state_est.xv_est.dot_xw[i] = stateEstimatorHandle.xvEst.dot_xw[i];
     }
+    msg.state_est.xv_est.aver_vel = stateEstimatorHandle.xvEst.aver_vel;
+    msg.state_est.xv_est.x_filter = stateEstimatorHandle.xvEst.x_filter;
+    msg.state_est.xv_est.v_filter = stateEstimatorHandle.xvEst.v_filter;
+   
     chassis_state_publisher_->publish(msg);
   }
 
@@ -392,14 +243,14 @@ void Debug_PrintEngineModel() {
 	  LQRControllerInit(&lqrControllerHandle[1]);
 	  legControllerInit(&leg_ControllerHandle);
 	  rotateControllerInit(&rotateControllerHandle);
-    stateEstimatorInit(&stateEstimatorHandle);
+    stateEstimatorInit(&stateEstimatorHandle, 0.003);
   
 	  // SlipDetection_Init(&slipDetection_handle, 0.2, 0.05, 0.1);
     /*任务控制参数设置*/
-    const uint8_t steptime = 4; // 4ms运行一次
+    const uint8_t steptime = 3; // 3ms运行一次
 
-	  chassis_ctrl_.target_L0[0] = 0.15;
-	  chassis_ctrl_.target_L0[1] = 0.15;
+	  chassis_ctrl_.target_L0[0] = 0.2;
+	  chassis_ctrl_.target_L0[1] = 0.2;
     
     float xdot[2][6*1]= {{0}};
     float hipJoint_setP[4]={0};
@@ -410,16 +261,16 @@ void Debug_PrintEngineModel() {
 	  while(rclcpp::ok())
 	  {
 		  /*update body euler angle*/
-		  rmInfantry_WLR.frame.body_worldFrame.roll =    -chassis_state_.imu.roll;
-		  rmInfantry_WLR.frame.body_worldFrame.yaw =      chassis_state_.imu.yaw ;
-		  rmInfantry_WLR.frame.body_worldFrame.pitch =   -chassis_state_.imu.pitch;
+		  rmInfantry_WLR.frame.body_worldFrame.rpy[0] =    -chassis_state_.imu.rpy[0];
+		  rmInfantry_WLR.frame.body_worldFrame.rpy[1] =    -chassis_state_.imu.rpy[1];
+		  rmInfantry_WLR.frame.body_worldFrame.rpy[2] =     chassis_state_.imu.rpy[2];
 		  /*update body gyro data*/
 		  rmInfantry_WLR.frame.body_worldFrame.w[0] =  -chassis_state_.imu.gyr[0];
 		  rmInfantry_WLR.frame.body_worldFrame.w[1] =  -chassis_state_.imu.gyr[1];
 		  rmInfantry_WLR.frame.body_worldFrame.w[2] =   chassis_state_.imu.gyr[2];
       rmInfantry_WLR.frame.body_worldFrame.a[0] =  -chassis_state_.imu.acc[0];
 		  rmInfantry_WLR.frame.body_worldFrame.a[1] =  -chassis_state_.imu.acc[1];
-		  rmInfantry_WLR.frame.body_worldFrame.a[2] =  chassis_state_.imu.acc[2] - 9.8;
+		  rmInfantry_WLR.frame.body_worldFrame.a[2] =   chassis_state_.imu.acc[2] - 9.8;
       /*update joint data*/
 		  for(int i = 0; i < 4; i++){
 			  // map to the kinmatics equation(fivelink frame)
@@ -436,14 +287,16 @@ void Debug_PrintEngineModel() {
         uint8_t index = wheelJointConfig[i].index;
 			  rmInfantry_WLR.joint.wheelJoint[i].q = 
 				  (wheelJointConfig[i].ifInvertPos ? -1 : 1)*chassis_state_.joint[index].q;
-			  rmInfantry_WLR.joint.wheelJoint[i].w = // dps/lsb map to m/s
-				  (wheelJointConfig[i].ifInvertVel ? -1 : 1)*chassis_state_.joint[index].dq * rmInfantry_WLR.link.wheelLink[i].lengthOrRadius;
+			  rmInfantry_WLR.joint.wheelJoint[i].w = 
+				  (wheelJointConfig[i].ifInvertVel ? -1 : 1)*chassis_state_.joint[index].dq;
 			  rmInfantry_WLR.joint.wheelJoint[i].t = 
 				  (wheelJointConfig[i].ifInvertTorque ? -1 : 1)*chassis_state_.joint[index].tau; //map to torque note!!!
 		  }
 
 		  /*updata remote control data*/
 		  // target_x[3] = RC_USER.move_x;
+      // chassis_ctrl_.target_x[2] += chassis_ctrl_.target_x[3]*(steptime/1000.0f);
+      // chassis_ctrl_.target_x[3] = 0;
   
 		  /*forward kinematics*/
 		  float in_phi1[2], in_phi4[2], out_phi0[2], out_L0[2];
@@ -453,7 +306,39 @@ void Debug_PrintEngineModel() {
 		  in_phi1[1] = rmInfantry_WLR.joint.hipJoint[2].q;
 		  in_phi4[1] = rmInfantry_WLR.joint.hipJoint[3].q;
 		  Engine_ForwardKinematics(&rmInfantry_WLR, in_phi1, in_phi4, out_phi0, out_L0, 1);
-  
+
+      float alpha[2] , theta[2],  L0[2];
+      alpha[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].aphi;
+      alpha[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].aphi;
+      theta[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].aphi;
+      theta[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].aphi;
+      L0[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].aphi;
+      L0[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].aphi;      
+      stateEstimatorUpdate(&stateEstimatorHandle, alpha, theta, L0);
+      /*XV Estimate*/
+      float w_ecd[2];
+      w_ecd[0] = rmInfantry_WLR.joint.wheelJoint[0].w;
+      w_ecd[1] = rmInfantry_WLR.joint.wheelJoint[1].w;
+      xvEstimateCalc(&stateEstimatorHandle,     
+        w_ecd,
+        rmInfantry_WLR.frame.body_worldFrame.a[0],
+        -rmInfantry_WLR.frame.body_worldFrame.rpy[1],
+        rmInfantry_WLR.link.wheelLink[0].lengthOrRadius 
+      );
+      /*Fn Estimate*/
+      float test_F[2] = {0};
+      float test_Tp[2] = {0};
+      test_F[0] = rmInfantry_WLR.frame.vmc_forceFrame[0].F;
+      test_F[1] = rmInfantry_WLR.frame.vmc_forceFrame[1].F;
+      test_Tp[0] = rmInfantry_WLR.frame.vmc_forceFrame[0].Tp;
+      test_Tp[1] = rmInfantry_WLR.frame.vmc_forceFrame[1].Tp;
+      FnEstimateCalc(&stateEstimatorHandle,
+        test_F,
+        test_Tp,
+        rmInfantry_WLR.frame.body_worldFrame.a[2],
+        rmInfantry_WLR.link.wheelLink->mass
+      );      
+
 		  /*lqr Control*/
 		  float lqrOutput[2][2*1] = {{0}};
 		  float lqrRevX[2][6*1] = {{0}};
@@ -461,29 +346,38 @@ void Debug_PrintEngineModel() {
 		  float lqrOutput_Tp[2] = {0};
 		  for(int i = 0; i < 2; i++){
 			  lqrRevX[i][0] =  rmInfantry_WLR.frame.vmc_jointFrame[i].theta;
-			  lqrRevX[i][1] = (rmInfantry_WLR.frame.vmc_jointFrame[i].theta - rmInfantry_WLR.frame.vmc_jointFrame[i].last_theta)*1000.0f/(steptime);
-				lqrRevX[i][2] = 0;
-        // lqrRevX[i][3] = (rmInfantry_WLR.joint.wheelJoint[0].w + rmInfantry_WLR.joint.wheelJoint[1].w)/2;
-			  lqrRevX[i][3] = rmInfantry_WLR.joint.wheelJoint[i].w;
-			  lqrRevX[i][4] = rmInfantry_WLR.frame.body_worldFrame.pitch;
+			  lqrRevX[i][1] = (rmInfantry_WLR.frame.vmc_jointFrame[i].theta_arr[0] - rmInfantry_WLR.frame.vmc_jointFrame[i].theta_arr[1])*1000.0f/(steptime);
+				lqrRevX[i][2] = stateEstimatorHandle.xvEst.x_filter;
+			  lqrRevX[i][3] = (rmInfantry_WLR.joint.wheelJoint[0].w+rmInfantry_WLR.joint.wheelJoint[1].w)*rmInfantry_WLR.link.wheelLink[i].lengthOrRadius/2;
+			  lqrRevX[i][4] = rmInfantry_WLR.frame.body_worldFrame.rpy[1];
 			  lqrRevX[i][5] = rmInfantry_WLR.frame.body_worldFrame.w[1];
 			  /*load lqr k table*/
         lqrControllerHandle[i].Gain.matrixHandle = Eigen::Map<Eigen::Matrix<float, 2, 6, Eigen::RowMajor>>(LQRKMatrixData);
-			  // memcpy(&lqrControllerHandle[i].Gain.matrixData, LQRKMatrixData, 6*2*sizeof(float));
 			  /* */
-			  if(chassis_ctrl_.target_x[3] != 0){ //如果目标速度不为零，则将关于位移的lqr权重置零
-				  lqrControllerHandle[i].Gain.matrixHandle.data()[2] = 0; //T
-				  lqrControllerHandle[i].Gain.matrixHandle.data()[8] = 0; //Tp
-			  }
+        if(groundDetection(&stateEstimatorHandle)){
+          // if((stateEstimatorHandle.FnEst.Fn[0] < 50.0f && stateEstimatorHandle.FnEst.Fn[1] < 50.0f))
+          std::cout << "ground !!!"<<std::endl;
+          lqrRevX[i][2] = chassis_ctrl_.target_x[2];
+          lqrRevX[i][3] = chassis_ctrl_.target_x[3];
+          stateEstimatorHandle.xvEst.x_filter = chassis_ctrl_.target_x[2];
+          // lqrControllerHandle[i].Gain.matrixHandle(0, 0) = 0;
+          // lqrControllerHandle[i].Gain.matrixHandle(0, 1) = 0;
+          lqrControllerHandle[i].Gain.matrixHandle(0, 2) = 0;
+          lqrControllerHandle[i].Gain.matrixHandle(0, 3) = 0;
+          // lqrControllerHandle[i].Gain.matrixHandle(0, 4) = 0;
+          // lqrControllerHandle[i].Gain.matrixHandle(0, 5) = 0;
+          // lqrControllerHandle[i].Gain.matrixHandle(1, 0) = 0;
+          // lqrControllerHandle[i].Gain.matrixHandle(1, 1) = 0;
+          lqrControllerHandle[i].Gain.matrixHandle(1, 2) = 0;
+          lqrControllerHandle[i].Gain.matrixHandle(1, 3) = 0;
+          // lqrControllerHandle[i].Gain.matrixHandle(1, 4) = 0;
+          // lqrControllerHandle[i].Gain.matrixHandle(1, 5) = 0;
+        }
 			  LQRController_Calc(&lqrControllerHandle[i], chassis_ctrl_.target_x, &lqrRevX[i][0], &lqrOutput[i][0]);
 			  lqrOutput_T[i] =  lqrOutput[i][0];
 			  lqrOutput_Tp[i] = lqrOutput[i][1];
 		  }
   
-		  float xn[2] = {lqrRevX[0][3], chassis_state_.imu.acc[1]};
-		  float zn[2] = {lqrRevX[0][3], chassis_state_.imu.acc[1]};
-		  // SlipDetection(&slipDetection_handle, xn, zn, 4.0/1000);
-		  
 		  /*leg control*/
 		  // float springDampingOut_F[2] = {0};		// [PID] vmc spring-damping output force 
 		  // float feedforwardOut_F[2] = {0};			// [FeedForward] Fn + Fs
@@ -496,7 +390,7 @@ void Debug_PrintEngineModel() {
         chassis_ctrl_.target_L0, 
         out_L0, 
         chassis_ctrl_.target_Roll,
-        rmInfantry_WLR.frame.body_worldFrame.roll, 
+        rmInfantry_WLR.frame.body_worldFrame.rpy[0], 
         rev_theta, 
         chassis_ctrl_.target_fs, 
         out_phi0, 
@@ -517,17 +411,6 @@ void Debug_PrintEngineModel() {
 			  out_T[i] = lqrOutput_T[i] + yawRotateOut_T[i];
 		  }
 		  Engine_InverseDynamics(&rmInfantry_WLR, in_Tp, in_F, out_torqueA, out_torqueE, 1);
-
-      /*Fn Estimate*/
-      FnEstimateUpdate(&stateEstimatorHandle, 
-        rev_theta,
-        out_L0,
-        in_F,
-        in_Tp,
-        rmInfantry_WLR.frame.body_worldFrame.a[2],
-        rmInfantry_WLR.link.wheelLink->mass,
-        (float)steptime/1000.0f
-        );
 
 		  /*calculate system state-space X_dot  = A*X + B*U*/
 		  float target_phi0[2] = {0};
@@ -551,7 +434,7 @@ void Debug_PrintEngineModel() {
 			  in_phi0[i] = target_phi0[i];
 			  in_L0[i] = chassis_ctrl_.target_L0[i];
 		  }
-		  Engine_InverseKinematics(&rmInfantry_WLR, in_phi0, in_L0, NULL, out_phi1, out_phi4);
+		  Engine_InverseKinematics(&rmInfantry_WLR, in_phi0, in_L0, out_phi1, out_phi4);
 
 
   
@@ -568,6 +451,23 @@ void Debug_PrintEngineModel() {
 			  }else if(out_phi4[i] > PI - CHASSIS_HIPJOINT_MIN_POS){
 				  out_phi4[i] = PI - CHASSIS_HIPJOINT_MIN_POS;
 			  }
+
+        if(out_torqueA[i] > 50.0f){
+          out_torqueA[i] = 50.0f;
+        }else if(out_torqueA[i] <-50.0f){
+          out_torqueA[i] = -50.0f;
+        }
+        if(out_torqueE[i] > 50.0f){
+          out_torqueE[i] = 50.0f;
+        }else if(out_torqueE[i] <-50.0f){
+          out_torqueE[i] = -50.0f;
+        }
+
+        if(wheelJoint_setT[i] > 5.0f){
+          wheelJoint_setT[i] = 5.0f;
+        }else if(wheelJoint_setT[i] <-5.0f){
+          wheelJoint_setT[i] = -5.0f;
+        }
 		  }
       //fivelink joint frame map to joint space 
       for(int i = 0; i < 2; i++){
@@ -627,6 +527,10 @@ void Debug_PrintEngineModel() {
   rclcpp::TimerBase::SharedPtr chassis_jointCmd_pubTimer_;
   rclcpp::TimerBase::SharedPtr chassis_state_pubTimer_;
   rclcpp::TimerBase::SharedPtr debug_timer_;
+
+  int use_ground = 1;
+  int ground_signal = 0;
+  int ground_time = 0;
 };
 
 int main(int argc, char ** argv){

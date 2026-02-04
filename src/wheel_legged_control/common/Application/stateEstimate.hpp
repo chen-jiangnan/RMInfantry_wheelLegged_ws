@@ -24,30 +24,60 @@
 
 typedef struct{
     struct{
+        float alpha[3];        
         float theta[3];
         float L0[3];
-        float ddot_zb;
 
         float ddot_L0;
         float dot_L0;
         float ddot_theta;
         float dot_theta;
-        
-        float ddot_zw;
-        float Fn;
-    }FnEst[2];
+        float ddot_alpha;
+        float dot_alpha;
+    }base[2];
+
+    struct{
+        float ddot_zb;
+        float ddot_zw[2];
+        float Fn[2];
+    }FnEst;
+
+    struct{
+        float w_ecd[2];
+        float b_acc;
+
+        float dot_xw[2];//驱动轮相对于大地的线速度
+        float aver_vel;
+
+        float x_filter;
+        float v_filter;
+
+    }xvEst;
+    
+    float dt;
 }StateEstimatorHandle_t;
 
 
-void stateEstimatorInit(StateEstimatorHandle_t* stateEstimator);
-void FnEstimateUpdate(StateEstimatorHandle_t* stateEstimator, 
+void stateEstimatorInit(StateEstimatorHandle_t* stateEstimator, float dt);
+void stateEstimatorUpdate(StateEstimatorHandle_t* stateEstimator,
+    const float* alpha, 
     const float* theta, 
-    const float* L0,  
+    const float* L0
+);
+
+void FnEstimateCalc(StateEstimatorHandle_t* stateEstimator, 
     const float* F, 
     const float* Tp,
     float ddot_zb,
-    float mw, 
-    float dt
+    float mw
+);
+bool groundDetection(StateEstimatorHandle_t* stateEstimator);
+
+void xvEstimateCalc(StateEstimatorHandle_t* stateEstimator,
+    const float* w_ecd, 
+    float b_acc,
+    float pitch,      
+    float Rw 
 );
 // bool checkContact(StateEstimatorHandle_t* stateEstimator);
 
