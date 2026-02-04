@@ -292,7 +292,7 @@
   <link name="right_chassis_wheel_link">
     <inertial>
       <origin xyz="1.7764E-06 -0.036068 6.3825E-06" rpy="0 0 0" />
-      <mass value="0.52417" />
+      <mass value="1.24506308" />
       <inertia ixx="0.00060029" ixy="-1.2136E-08" ixz="8.6961E-09" iyy="0.0011204" iyz="3.0631E-08" izz="0.00060031" />
     </inertial>
     <visual>
@@ -321,7 +321,7 @@
   <link name="gimbal_yaw_link">
     <inertial>
       <origin xyz="0.0063949 0.01356 0.072584" rpy="0 0 0" />
-      <mass value="0.70223" />
+      <mass value="0.70223299" />
       <inertia ixx="0.0011712" ixy="3.0488E-07" ixz="1.7288E-07" iyy="0.00075986" iyz="-0.00018026" izz="0.00081056" />
     </inertial>
     <visual>
@@ -349,7 +349,7 @@
   <link name="gimbal_pitch_motor_link">
     <inertial>
       <origin xyz="-0.00079938 0.00028082 -0.00010689" rpy="0 0 0" />
-      <mass value="0.29161" />
+      <mass value="0.48928842" />
       <inertia ixx="9.5868E-05" ixy="1.2343E-08" ixz="4.6016E-08" iyy="0.00016404" iyz="-4.8477E-07" izz="0.000104" />
     </inertial>
     <visual>
@@ -433,7 +433,7 @@
   <link name="gimbal_pitch_link">
     <inertial>
       <origin xyz="0.00570445411307587 -0.0357202631780137 0.0241584830663755" rpy="0 0 0" />
-      <mass value="1.26308074496479" />
+      <mass value="2.23648116" />
       <inertia ixx="0.00113734474641569" ixy="-6.04664308296285E-06" ixz="-0.000210962920027997" iyy="0.00190756636329975" iyz="-1.26424750051048E-06" izz="0.00229904338857953" />
     </inertial>
     <visual>

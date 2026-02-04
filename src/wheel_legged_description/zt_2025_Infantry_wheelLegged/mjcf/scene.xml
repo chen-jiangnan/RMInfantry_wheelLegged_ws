@@ -20,17 +20,17 @@
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
 
-    <geom pos="-2 0 0.0" type="box"  size="2 2 0.4" quat="1.0 0 0 0"/>
+    <geom pos="-10 0 0.0" type="box"  size="2 2 0.4" quat="1.0 0 0 0"/>
 
-    <geom pos="0.8 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
-    <geom pos="1.2 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
-    <geom pos="1.6 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
+    <geom pos="8 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
+    <geom pos="12 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
+    <geom pos="16 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
 
-    <geom pos="2.3 0 0.02" type="box"  size="0.2 2 0.15" quat="1.0 0 0 0"/>
-    <geom pos="2.6 0 0.02" type="box"  size="0.22 2 0.3" quat="1.0 0 0 0"/>
-    <geom pos="2.8 0 0.02" type="box"  size="0.23 2 0.45" quat="1.0 0 0 0"/>
-    <geom pos="3 0 0.02" type="box"  size="0.24 2 0.6" quat="1.0 0 0 0"/>
-    <geom pos="3.2 0 0.02" type="box"  size="0.25 2 0.75" quat="1.0 0 0 0"/>
-    <geom pos="3.4 0 0.02" type="box"  size="0.26 2 0.9" quat="1.0 0 0 0"/>
+    <geom pos="23 0 0.02" type="box"  size="0.2 2 0.15" quat="1.0 0 0 0"/>
+    <geom pos="26 0 0.02" type="box"  size="0.22 2 0.3" quat="1.0 0 0 0"/>
+    <geom pos="28 0 0.02" type="box"  size="0.23 2 0.45" quat="1.0 0 0 0"/>
+    <geom pos="30 0 0.02" type="box"  size="0.24 2 0.6" quat="1.0 0 0 0"/>
+    <geom pos="32 0 0.02" type="box"  size="0.25 2 0.75" quat="1.0 0 0 0"/>
+    <geom pos="34 0 0.02" type="box"  size="0.26 2 0.9" quat="1.0 0 0 0"/>
   </worldbody>
 </mujoco>

@@ -80,7 +80,7 @@
   </asset>
 
   <worldbody>
-    <body name="base_link" pos="-0.5 0 0.5" childclass="RMInfantry_wheelLegged">
+    <body name="base_link" pos="0 0 0.15" childclass="RMInfantry_wheelLegged">
       <inertial pos="-0.003111 0.0015208 0.10627" quat="0.00205399 0.707016 0.00191127 0.707192" mass="16.7749" diaginertia="0.0548401 0.0519599 0.018047"/>
       <joint name="floating_base_joint" type="free"/>
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.50196 0.50196 0.50196 1" mesh="base_link"/>
@@ -136,7 +136,7 @@
           <joint name="right_rear_knee_joint" pos="0 0 0" axis="0 -1 0"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="right_rear_knee_link"/>
           <body name="right_chassis_wheel_link" pos="0.19468 -0.013 -0.17534">
-            <inertial pos="1.7764e-06 -0.036068 6.3825e-06" quat="0.402989 0.581024 0.581013 0.403032" mass="0.52417" diaginertia="0.0011204 0.000600313 0.000600287"/>
+            <inertial pos="1.7764e-06 -0.036068 6.3825e-06" quat="0.402989 0.581024 0.581013 0.403032" mass="1.24506" diaginertia="0.0011204 0.000600313 0.000600287"/>
             <joint name="right_chassis_wheel_joint" pos="0 0 0" axis="0 -1 0" class='wheel_joint'/>
             <site name="right_chassis_wheel_site1" pos="0 0 0" size="0.005" rgba="1 0 0 1"/>
             <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="right_chassis_wheel_link"/>
@@ -145,11 +145,11 @@
         </body>
       </body>
       <body name="gimbal_yaw_link" pos="0 0 0.179">
-        <inertial pos="0.0063949 0.01356 0.072584" quat="0.414713 0.909952 0.000280505 0.000204462" mass="0.70223" diaginertia="0.0011712 0.000967244 0.000603176"/>
+        <inertial pos="0.0063949 0.01356 0.072584" quat="0.414713 0.909952 0.000280505 0.000204462" mass="0.702233" diaginertia="0.0011712 0.000967244 0.000603176"/>
         <joint name="gimbal_yaw_joint" pos="0 0 0" axis="0 0 1" class='gimbal_yaw_joint'/>
         <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="gimbal_yaw_link"/>
         <body name="gimbal_pitch_motor_link" pos="0 0.04735 0.068">
-          <inertial pos="-0.00079938 0.00028082 -0.00010689" quat="0.500644 0.499443 0.503381 0.496508" mass="0.29161" diaginertia="0.000164044 0.000103996 9.58677e-05"/>
+          <inertial pos="-0.00079938 0.00028082 -0.00010689" quat="0.500644 0.499443 0.503381 0.496508" mass="0.489288" diaginertia="0.000164044 0.000103996 9.58677e-05"/>
           <joint name="gimbal_pitch_motor_joint" pos="0 0 0" axis="0 1 0" class='gimbal_pitch_joint'/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.89412 0.9098 0.92549 1" mesh="gimbal_pitch_motor_link"/>
           <body name="gimbal_pitch_motor_chrild1_link" pos="-0.05 0.02585 0">
@@ -161,7 +161,7 @@
           </body>
         </body>
         <body name="gimbal_pitch_link" pos="0 0.043 0.135">
-          <inertial pos="0.00570445 -0.0357203 0.0241585" quat="-0.00263437 0.642914 0.00278066 0.765929" mass="1.26308" diaginertia="0.00233617 0.00190761 0.00110017"/>
+          <inertial pos="0.00570445 -0.0357203 0.0241585" quat="-0.00263437 0.642914 0.00278066 0.765929" mass="2.23648" diaginertia="0.00233617 0.00190761 0.00110017"/>
           <joint name="gimbal_pitch_joint" pos="0 0 0" axis="0 1 0" range="-0.43633 0.43633"/>
           <site name="gimbal_pitch_site1" pos="-0.05 0.02735 0.0" size="0.005" rgba="1 0 0 1"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="gimbal_pitch_link"/>
