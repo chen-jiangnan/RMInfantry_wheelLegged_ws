@@ -18,6 +18,7 @@ set(msg_files
   # Common MSG
   "msg/Common/Controller/PidControllerTrace.msg"
   "msg/Common/Obersver/FnEstimatorTrace.msg"
+  "msg/Common/Obersver/XVEstimatorTrace.msg"
 
   # High Level Control MSG
   "msg/HighLevelControl/Sport/WheelLegged/BodyWorldFrame.msg"

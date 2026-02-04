@@ -1,1 +1,2 @@
-FnEstimatorTrace[2] fn_est
+FnEstimatorTrace fn_est
+XVEstimatorTrace xv_est
