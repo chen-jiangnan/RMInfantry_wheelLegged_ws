@@ -199,10 +199,19 @@ void Engine_ForwardKinematics(
         model->frame.fiveLink_jointFrame[i].phi[3] = phi3;
         model->frame.fiveLink_jointFrame[i].phi[4] = phi4[i];
 
-        model->frame.vmc_jointFrame[i].last_theta = model->frame.vmc_jointFrame[i].theta;
-        model->frame.vmc_jointFrame[i].last_aphi = model->frame.vmc_jointFrame[i].aphi;
-        model->frame.vmc_jointFrame[i].theta = phi0[i] - model->frame.body_worldFrame.pitch - PI/2;
+        // model->frame.vmc_jointFrame[i].last_theta = model->frame.vmc_jointFrame[i].theta;
+        // model->frame.vmc_jointFrame[i].last_aphi = model->frame.vmc_jointFrame[i].aphi;
+        model->frame.vmc_jointFrame[i].theta = phi0[i] - model->frame.body_worldFrame.rpy[1] - PI/2;
         model->frame.vmc_jointFrame[i].aphi = phi0[i] - PI/2;
+        // update history data
+        for(int j = 1; j < HISTORY_NUMS; j++){
+            model->frame.vmc_jointFrame[i].theta_arr[HISTORY_NUMS-j] = model->frame.vmc_jointFrame[i].theta_arr[HISTORY_NUMS-1-j];
+            model->frame.vmc_jointFrame[i].aphi_arr[HISTORY_NUMS-j] = model->frame.vmc_jointFrame[i].aphi_arr[HISTORY_NUMS-1-j];
+            model->frame.fiveLink_jointFrame[i].L0_arr[HISTORY_NUMS-j] = model->frame.fiveLink_jointFrame[i].L0_arr[HISTORY_NUMS-1-j];
+        }
+        model->frame.vmc_jointFrame[i].theta_arr[0] = model->frame.vmc_jointFrame[i].theta;
+        model->frame.vmc_jointFrame[i].aphi_arr[0] = model->frame.vmc_jointFrame[i].aphi;
+        model->frame.fiveLink_jointFrame[i].L0_arr[0] = L0[i];
     }
 } 
 
@@ -222,7 +231,6 @@ void Engine_InverseKinematics(
     EngineModel_t* model,
     const float* phi0,
     const float* L0,
-    EngineFiveLinkJointFrame_t* fiveLink_jointFrame,
     float* phi1,
     float* phi4
 )
@@ -276,9 +284,9 @@ void Engine_ForwardDynamics(
 
     for(int i = 0; i < 2; i++){
         //step0:get value
-        float L3 = model->link.hipLink[i].lengthOrRadius;
+        // float L3 = model->link.hipLink[i].lengthOrRadius;
         float L1 = model->link.thighLink[i].lengthOrRadius;
-        float L2 = model->link.shankLink[i].lengthOrRadius;
+        // float L2 = model->link.shankLink[i].lengthOrRadius;
         float L0 =   model->frame.fiveLink_jointFrame[i].L0;
         float phi0 = model->frame.fiveLink_jointFrame[i].phi[0];
         float phi1 = model->frame.fiveLink_jointFrame[i].phi[1];
@@ -366,9 +374,9 @@ void Engine_InverseDynamics(
 
     for(int i = 0; i < 2; i++){
         // step0:get value
-        float L3 = model->link.hipLink[i].lengthOrRadius;
+        // float L3 = model->link.hipLink[i].lengthOrRadius;
         float L1 = model->link.thighLink[i].lengthOrRadius;
-        float L2 = model->link.shankLink[i].lengthOrRadius;
+        // float L2 = model->link.shankLink[i].lengthOrRadius;
         float L0 =   model->frame.fiveLink_jointFrame[i].L0;
         float phi0 = model->frame.fiveLink_jointFrame[i].phi[0];
         float phi1 = model->frame.fiveLink_jointFrame[i].phi[1];
@@ -520,9 +528,9 @@ void PrintEngineModelInfo(const EngineModel_t* model) {
     
     // 打印身体姿态
     std::cout << "\n--- Body World Frame ---" << std::endl;
-    std::cout << "Roll:  " << std::setw(10) << std::fixed << std::setprecision(4) << model->frame.body_worldFrame.roll 
-              << " rad, Pitch: " << std::setw(10) << model->frame.body_worldFrame.pitch
-              << " rad, Yaw: " << std::setw(10) << model->frame.body_worldFrame.yaw << " rad" << std::endl;
+    std::cout << "Roll:  " << std::setw(10) << std::fixed << std::setprecision(4) << model->frame.body_worldFrame.rpy[0] 
+              << " rad, Pitch: " << std::setw(10) << model->frame.body_worldFrame.rpy[1]
+              << " rad, Yaw: " << std::setw(10) << model->frame.body_worldFrame.rpy[2] << " rad" << std::endl;
     std::cout << "Angular Vel: [" 
               << std::setw(8) << model->frame.body_worldFrame.w[0] << ", "
               << std::setw(8) << model->frame.body_worldFrame.w[1] << ", "

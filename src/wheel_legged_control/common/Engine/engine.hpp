@@ -25,8 +25,10 @@
 #include <iostream>
 #include <iomanip>
 
+#define HISTORY_NUMS 10
 const float PI = 3.14159265358979323846;
-  /*define model state-space*/
+
+/*define model state-space*/
 extern Eigen::MatrixXf modelAMatrixHandle;
 extern Eigen::MatrixXf modelBMatrixHandle;
   
@@ -34,38 +36,39 @@ typedef struct{
     float q;    //关节角位置，电机反馈值    单位:rad
     float w;    //关节角速度, 电机反馈值    单位:rad/s
     float t;    //关节角力矩, 电机反馈值    单位:n*m
-}EngineJoint_t;
+}EngineJoint_t;// 通过电机反馈进行更新
 
 typedef struct{
-    float mass;             //质量描述               单位:kg
+    float mass;             //质量描述              单位:kg
     float lengthOrRadius;   //长度或者半径描述       单位:m
     float inertia;          //转动惯量描述(绕质心)   单位:kg*m^2   
-}EngineLink_t;
+}EngineLink_t;// 初始化设置
 
 typedef struct{
     float mass;             //质量描述                        单位:kg
     float l;                //虚拟连杆的转轴到机体质心的距离   单位:m
     float inertia;          //转动惯量描述                    单位:kg*m^2
-}EngineBodyLink_t;
+}EngineBodyLink_t;// 初始化设置
 
 typedef struct{
     float mass;             //质量描述                     单位:kg
     float L;                //车轮轴心到虚拟连杆质心的距离     单位:m
     float LM;               //虚拟杆质心到虚拟杆转轴的距离     单位:m
-    float inertia;
-}EngineVirtualLink_t;
+    float inertia;          //转动惯量描述                    单位:kg*m^2
+}EngineVirtualLink_t;// 初始化设置
 
 typedef struct{
     float L0;               //虚拟杆长                                                                     单位:m
     float phi[5];           //5连杆各杆在该坐标系下与x轴的角度，其中index:0为虚拟杆长,index:1~4从A点按顺时针编号    单位:rad
-}EngineFiveLinkJointFrame_t;
+    float L0_arr[HISTORY_NUMS];       //储存历史数据
+}EngineFiveLinkJointFrame_t;// 通过电机反馈进行更新
 
 typedef struct{
     float theta;            //虚拟杆在世界坐标系下与竖直方向的夹角      单位:rad
     float aphi;             //虚拟杆在机体坐标系下与竖直方向的夹角      单位:rad
-    float last_theta;
-    float last_aphi;
-}EngineVMCJointFrame_t;
+    float theta_arr[HISTORY_NUMS];    //储存历史数据
+    float aphi_arr[HISTORY_NUMS];     //储存历史数据
+}EngineVMCJointFrame_t;// 通过电机反馈进行更新
 
 typedef struct{
     float Tp;               //虚拟连杆坐标系下绕机体转轴旋转的力矩      单位:n*m
@@ -73,9 +76,7 @@ typedef struct{
 }EngineVMCForceFrame_t;
 
 typedef struct{
-    float roll;             //机体在世界坐标系下的翻滚角roll        单位:rad
-    float yaw;              //机体在世界坐标系下的航向角yaw         单位:rad
-    float pitch;            //机体在世界坐标系下的俯仰角pitch       单位:rad
+    float rpy[3];           //机体在世界坐标系下的翻滚角roll/俯仰角pitch/航向角yaw        单位:rad
     float w[3];
     float a[3];
 }EngineBody_WorldFrame_t;
@@ -162,7 +163,6 @@ void Engine_ForwardKinematics(
 * @param[out]   model:轮式5连杆构型机器人模型
 * @param[in]    phi0:逆运动学输入，fiveLink_jointFrame极坐标系下对应phi0
 * @param[in]    L0:逆运动学输入，fiveLink_jointFrame极坐标系下对应为L0
-* @param[out]   fiveLink_jointFrame: 5连杆关节坐标系，逆运动学副产物，可以为NULL
 * @param[out]   phi1:逆运动学输出, fiveLink_jointFrame笛卡尔坐标系下对应为phiA
 * @param[out]   phi4:逆运动学输出, fiveLInk_jointFrame笛卡尔坐标系下对应为phiE
 */
@@ -170,7 +170,6 @@ void Engine_InverseKinematics(
     EngineModel_t* model,
     const float* phi0,
     const float* L0,
-    EngineFiveLinkJointFrame_t* fiveLink_jointFrame,
     float* phi1,
     float* phi4
 );
