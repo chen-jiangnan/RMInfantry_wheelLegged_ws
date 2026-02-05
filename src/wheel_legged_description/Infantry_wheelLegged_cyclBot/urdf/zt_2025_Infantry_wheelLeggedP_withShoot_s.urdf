@@ -5,9 +5,14 @@
   </mujoco>
   
   <link name="world" />
-  <joint name="floating_base_joint" type="floating">
+  <!-- <joint name="floating_base_joint" type="floating">
     <parent link="world" />
     <child link="base_link" />
+  </joint> -->
+  <joint name="world_to_base" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
   
   <link name="base_link">

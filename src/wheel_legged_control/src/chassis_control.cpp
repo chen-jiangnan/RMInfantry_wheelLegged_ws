@@ -230,6 +230,8 @@ private:
     msg.state_est.xv_est.aver_vel = stateEstimatorHandle.xvEst.aver_vel;
     msg.state_est.xv_est.x_filter = stateEstimatorHandle.xvEst.x_filter;
     msg.state_est.xv_est.v_filter = stateEstimatorHandle.xvEst.v_filter;
+
+    msg.ground_signal = ground_signal;
    
     chassis_state_publisher_->publish(msg);
   }
@@ -355,6 +357,7 @@ private:
         lqrControllerHandle[i].Gain.matrixHandle = Eigen::Map<Eigen::Matrix<float, 2, 6, Eigen::RowMajor>>(LQRKMatrixData);
 			  /* */
         if(groundDetection(&stateEstimatorHandle)){
+          ground_signal = 1;
           // if((stateEstimatorHandle.FnEst.Fn[0] < 50.0f && stateEstimatorHandle.FnEst.Fn[1] < 50.0f))
           std::cout << "ground !!!"<<std::endl;
           lqrRevX[i][2] = chassis_ctrl_.target_x[2];
@@ -372,6 +375,8 @@ private:
           lqrControllerHandle[i].Gain.matrixHandle(1, 3) = 0;
           // lqrControllerHandle[i].Gain.matrixHandle(1, 4) = 0;
           // lqrControllerHandle[i].Gain.matrixHandle(1, 5) = 0;
+        }else{
+          ground_signal = 0;
         }
 			  LQRController_Calc(&lqrControllerHandle[i], chassis_ctrl_.target_x, &lqrRevX[i][0], &lqrOutput[i][0]);
 			  lqrOutput_T[i] =  lqrOutput[i][0];
@@ -528,9 +533,7 @@ private:
   rclcpp::TimerBase::SharedPtr chassis_state_pubTimer_;
   rclcpp::TimerBase::SharedPtr debug_timer_;
 
-  int use_ground = 1;
-  int ground_signal = 0;
-  int ground_time = 0;
+  uint8_t ground_signal = 0;
 };
 
 int main(int argc, char ** argv){

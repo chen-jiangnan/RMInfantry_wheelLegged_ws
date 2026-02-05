@@ -79,6 +79,7 @@ private:
       if(msg->buttons[6] == 1){fsm_->setCaliState();} //Y
       if(msg->buttons[11] == 1){fsm_->setZeroTauState();} //
       chassis_ctrl_.target_x[3] = msg->axes[1]*2;
+      chassis_ctrl_.target_wYaw = msg->axes[4]*2;
       if(msg->buttons[0] == 1){
         jump_signal_ = true;
       }
@@ -101,6 +102,7 @@ private:
         msg.target_fs[i] = chassis_ctrl_.target_fs[i];
         msg.target_l0[i] = chassis_ctrl_.target_L0[i];    
       }
+      msg.target_wyaw = chassis_ctrl_.target_wYaw;
       msg.target_roll = chassis_ctrl_.target_Roll;
       chassis_ctrl_publisher_->publish(msg);
     }

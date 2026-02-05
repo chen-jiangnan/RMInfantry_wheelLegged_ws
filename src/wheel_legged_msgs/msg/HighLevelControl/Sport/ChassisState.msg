@@ -10,3 +10,5 @@ LqrControllerTrace[2] lqrctrl
 LegControllerTrace legctrl
 PidControllerTrace rotatectrl
 StateEstimatorTrace state_est
+
+uint8 ground_signal

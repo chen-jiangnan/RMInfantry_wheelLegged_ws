@@ -120,18 +120,23 @@ bool groundDetection(StateEstimatorHandle_t* stateEstimator){
     if(( left_Fn > 100.0f && right_Fn > 100.0f) && (left_Fn < 150.0f && right_Fn < 150.0f)){
         if(ground_signal){
             ground_time++;
-            if(ground_time > 10){
+            if(ground_time > 20){
                 ground_signal = false;
+                ground_time = 0;
             }
         }
     }
     // 离地支撑力工作区间
     else if(left_Fn < 80.0f && right_Fn < 80.0f){
         ground_signal = true;
+        ground_time = 0;
     }
     // 非正常支撑力工作区间
     else if(left_Fn > 200.0f && right_Fn > 200.0f){
         ground_signal = true;
+        ground_time = 0;
+    }else{
+        ground_time = 0;
     }
 
     return ground_signal;

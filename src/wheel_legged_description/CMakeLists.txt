@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(wheel_legged_launch)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+project(wheel_legged_description)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -14,15 +10,9 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
-
-# 安装 launch 文件
-install(DIRECTORY launch
+install(
+  DIRECTORY Infantry_wheelLegged_cyclBot
   DESTINATION share/${PROJECT_NAME}
-)
-
-# 安装 rviz 配置文件
-install(DIRECTORY rviz
-  DESTINATION share/${PROJECT_NAME}/
 )
 
 if(BUILD_TESTING)

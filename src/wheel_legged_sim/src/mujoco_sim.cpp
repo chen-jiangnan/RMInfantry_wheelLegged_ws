@@ -851,11 +851,12 @@ int main(int argc, char **argv)
   mjv_defaultPerturb(&pert);
 
   // Load simulation configuration
-  std::filesystem::path proj_dir = std::filesystem::path(getExecutableDir()).parent_path().parent_path(); 
+  std::filesystem::path proj_dir = std::filesystem::path(getExecutableDir()).parent_path().parent_path();
+  std::cout <<  "proj_dir" <<proj_dir<< std::endl;
   param::config.load_from_yaml(proj_dir / "share"/ PACKAGE_NAME / "config.yaml");
   param::helper(argc, argv);
   if(param::config.robot_scene.is_relative()) {
-    param::config.robot_scene = proj_dir.parent_path().parent_path()/ "src" / "wheel_legged_description" / param::config.robot_file_path;
+    param::config.robot_scene = proj_dir.parent_path().parent_path()/ "src" / "wheel_legged_description" / param::config.robot_file_path / param::config.robot_scene;
   }
 
   // simulate object encapsulates the UIb
