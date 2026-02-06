@@ -4,8 +4,9 @@ import cv2
 import noise
 
 ROBOT = "go2"
-INPUT_SCENE_PATH = "/home/nan/Desktop/RMInfantry_wheelLegged_ws/src/wheel_legged_description/zt_2025_Infantry_wheelLegged/mjcf/scene.xml"
-OUTPUT_SCENE_PATH = "/home/nan/Desktop/RMInfantry_wheelLegged_ws/src/wheel_legged_description/zt_2025_Infantry_wheelLegged/mjcf/scene_terrain.xml"
+INPUT_SCENE_PATH = "/home/nan/Desktop/RMInfantry_wheelLegged_ws/src/wheel_legged_description/Infantry_wheelLegged_cyclBot/mjcf/scene.xml"
+OUTPUT_SCENE_PATH = "/home/nan/Desktop/RMInfantry_wheelLegged_ws/src/wheel_legged_description/Infantry_wheelLegged_cyclBot/mjcf/scene_terrain.xml"
+OUTPUT_IMAGE_PATH = "/home/nan/Desktop/RMInfantry_wheelLegged_ws/src/wheel_legged_description/Infantry_wheelLegged_cyclBot/terrain"
 
 
 # zyx euler angle to quaternion
@@ -200,14 +201,14 @@ class TerrainGenerator:
                                             lacunarity=perlin_lacunarity)
                 terrain_image[y, x] = int((noise_value + 1) / 2 * 255)
 
-        cv2.imwrite("../unitree_robots/" + ROBOT + "/" + output_hfield_image,
+        cv2.imwrite(OUTPUT_IMAGE_PATH + "/" + output_hfield_image,
                     terrain_image)
 
         hfield = xml_et.SubElement(self.asset, "hfield")
         hfield.attrib["name"] = "perlin_hfield"
         hfield.attrib["size"] = list_to_str(
             [size[0] / 2.0, size[1] / 2.0, height_scale, negative_height])
-        hfield.attrib["file"] = "../" + output_hfield_image
+        hfield.attrib["file"] = "../terrain/" + output_hfield_image
 
         geo = xml_et.SubElement(self.worldbody, "geom")
         geo.attrib["type"] = "hfield"
@@ -273,18 +274,18 @@ if __name__ == "__main__":
               size=[2.29, 1.5, 0.1])
 
     # Stairs
-    tg.AddStairs(init_pos=[1.0, 4.0, 0.0], yaw=0.0)
+    # tg.AddStairs(init_pos=[1.0, 4.0, 0.0], yaw=0.0)
 
-    # Suspend stairs
-    tg.AddSuspendStairs(init_pos=[1.0, 6.0, 0.0], yaw=0.0)
+    # # Suspend stairs
+    # tg.AddSuspendStairs(init_pos=[1.0, 6.0, 0.0], yaw=0.0)
 
     # Rough ground
-    tg.AddRoughGround(init_pos=[-2.5, 5.0, 0.0],
+    tg.AddRoughGround(init_pos=[-5, 5.0, 0.0],
                       euler=[0, 0, 0.0],
                       nums=[10, 8])
 
     # Perlin heigh field
-    # tg.AddPerlinHeighField(position=[-1.5, 4.0, 0.0], size=[2.0, 1.5])
+    tg.AddPerlinHeighField(position=[-5, -5, -0.0], size=[4.0, 4.0])
 
     # Heigh field from image
     # tg.AddHeighFieldFromImage(position=[-1.5, 2.0, 0.0],
