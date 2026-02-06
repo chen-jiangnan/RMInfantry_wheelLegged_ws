@@ -189,7 +189,7 @@ private:
       msg.legvmc_forceframe[i].f = rmInfantry_WLR.frame.vmc_forceFrame[i].F;
       msg.legvmc_forceframe[i].tp = rmInfantry_WLR.frame.vmc_forceFrame[i].Tp;
       msg.legvmc_jointframe[i].theta = rmInfantry_WLR.frame.vmc_jointFrame[i].theta;
-      msg.legvmc_jointframe[i].aphi = rmInfantry_WLR.frame.vmc_jointFrame[i].aphi;
+      msg.legvmc_jointframe[i].alpha = rmInfantry_WLR.frame.vmc_jointFrame[i].alpha;
     }
 
     for(int i = 0; i < 2; i++){
@@ -232,7 +232,10 @@ private:
     msg.state_est.xv_est.v_filter = stateEstimatorHandle.xvEst.v_filter;
 
     msg.ground_signal = ground_signal;
-   
+    msg.fd_f[0] = rev_F[0];
+    msg.fd_f[1] = rev_F[1];
+    msg.fd_tp[0] = rev_Tp[0];
+    msg.fd_tp[1] = rev_Tp[1];
     chassis_state_publisher_->publish(msg);
   }
 
@@ -247,14 +250,12 @@ private:
 	  rotateControllerInit(&rotateControllerHandle);
     stateEstimatorInit(&stateEstimatorHandle, 0.003);
   
-	  // SlipDetection_Init(&slipDetection_handle, 0.2, 0.05, 0.1);
     /*任务控制参数设置*/
     const uint8_t steptime = 3; // 3ms运行一次
 
 	  chassis_ctrl_.target_L0[0] = 0.2;
 	  chassis_ctrl_.target_L0[1] = 0.2;
     
-    float xdot[2][6*1]= {{0}};
     float hipJoint_setP[4]={0};
     float hipJoint_setV[4]={0};
     float hipJoint_setT[4]={0};
@@ -263,15 +264,15 @@ private:
 	  while(rclcpp::ok())
 	  {
 		  /*update body euler angle*/
-		  rmInfantry_WLR.frame.body_worldFrame.rpy[0] =    -chassis_state_.imu.rpy[0];
+		  rmInfantry_WLR.frame.body_worldFrame.rpy[0] =     chassis_state_.imu.rpy[0];
 		  rmInfantry_WLR.frame.body_worldFrame.rpy[1] =    -chassis_state_.imu.rpy[1];
 		  rmInfantry_WLR.frame.body_worldFrame.rpy[2] =     chassis_state_.imu.rpy[2];
 		  /*update body gyro data*/
-		  rmInfantry_WLR.frame.body_worldFrame.w[0] =  -chassis_state_.imu.gyr[0];
+		  rmInfantry_WLR.frame.body_worldFrame.w[0] =   chassis_state_.imu.gyr[0];
 		  rmInfantry_WLR.frame.body_worldFrame.w[1] =  -chassis_state_.imu.gyr[1];
 		  rmInfantry_WLR.frame.body_worldFrame.w[2] =   chassis_state_.imu.gyr[2];
-      rmInfantry_WLR.frame.body_worldFrame.a[0] =  -chassis_state_.imu.acc[0];
-		  rmInfantry_WLR.frame.body_worldFrame.a[1] =  -chassis_state_.imu.acc[1];
+      rmInfantry_WLR.frame.body_worldFrame.a[0] =   chassis_state_.imu.acc[0];
+		  rmInfantry_WLR.frame.body_worldFrame.a[1] =   chassis_state_.imu.acc[1];
 		  rmInfantry_WLR.frame.body_worldFrame.a[2] =   chassis_state_.imu.acc[2] - 9.8;
       /*update joint data*/
 		  for(int i = 0; i < 4; i++){
@@ -296,27 +297,31 @@ private:
 		  }
 
 		  /*updata remote control data*/
-		  // target_x[3] = RC_USER.move_x;
-      // chassis_ctrl_.target_x[2] += chassis_ctrl_.target_x[3]*(steptime/1000.0f);
-      // chassis_ctrl_.target_x[3] = 0;
   
 		  /*forward kinematics*/
-		  float in_phi1[2], in_phi4[2], out_phi0[2], out_L0[2];
-  
-		  in_phi1[0] = rmInfantry_WLR.joint.hipJoint[0].q;		// joint space map to fivelink joint frame
-		  in_phi4[0] = rmInfantry_WLR.joint.hipJoint[1].q;
-		  in_phi1[1] = rmInfantry_WLR.joint.hipJoint[2].q;
-		  in_phi4[1] = rmInfantry_WLR.joint.hipJoint[3].q;
-		  Engine_ForwardKinematics(&rmInfantry_WLR, in_phi1, in_phi4, out_phi0, out_L0, 1);
+		  float rev_phi1[2], rev_phi4[2], rev_phi0[2], rev_L0[2];
+		  rev_phi1[0] = rmInfantry_WLR.joint.hipJoint[0].q;		// joint space map to fivelink joint frame
+		  rev_phi4[0] = rmInfantry_WLR.joint.hipJoint[1].q;
+		  rev_phi1[1] = rmInfantry_WLR.joint.hipJoint[2].q;
+		  rev_phi4[1] = rmInfantry_WLR.joint.hipJoint[3].q;
+		  Engine_ForwardKinematics(&rmInfantry_WLR, rev_phi1, rev_phi4, rev_phi0, rev_L0, 1);
 
-      float alpha[2] , theta[2],  L0[2];
-      alpha[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].aphi;
-      alpha[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].aphi;
-      theta[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].aphi;
-      theta[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].aphi;
-      L0[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].aphi;
-      L0[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].aphi;      
-      stateEstimatorUpdate(&stateEstimatorHandle, alpha, theta, L0);
+      /*forward dynamics*/
+      float rev_torqueA[2], rev_torqueE[2];//, rev_Tp[2], rev_F[2];
+      rev_torqueA[0] = rmInfantry_WLR.joint.hipJoint[0].t;
+      rev_torqueE[0] = rmInfantry_WLR.joint.hipJoint[1].t;
+      rev_torqueA[1] = rmInfantry_WLR.joint.hipJoint[2].t;
+      rev_torqueE[1] = rmInfantry_WLR.joint.hipJoint[3].t;
+      Engine_ForwardDynamics(&rmInfantry_WLR, rev_torqueA, rev_torqueE, rev_Tp, rev_F, 1);    
+
+      
+      float rev_alpha[2], rev_theta[2];
+      rev_alpha[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].alpha;
+      rev_alpha[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].alpha;
+      rev_theta[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].theta;
+      rev_theta[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].theta;   
+      stateEstimatorUpdate(&stateEstimatorHandle, rev_alpha, rev_theta, rev_L0);
+
       /*XV Estimate*/
       float w_ecd[2];
       w_ecd[0] = rmInfantry_WLR.joint.wheelJoint[0].w;
@@ -328,15 +333,9 @@ private:
         rmInfantry_WLR.link.wheelLink[0].lengthOrRadius 
       );
       /*Fn Estimate*/
-      float test_F[2] = {0};
-      float test_Tp[2] = {0};
-      test_F[0] = rmInfantry_WLR.frame.vmc_forceFrame[0].F;
-      test_F[1] = rmInfantry_WLR.frame.vmc_forceFrame[1].F;
-      test_Tp[0] = rmInfantry_WLR.frame.vmc_forceFrame[0].Tp;
-      test_Tp[1] = rmInfantry_WLR.frame.vmc_forceFrame[1].Tp;
       FnEstimateCalc(&stateEstimatorHandle,
-        test_F,
-        test_Tp,
+        rev_F,
+        rev_Tp,
         rmInfantry_WLR.frame.body_worldFrame.a[2],
         rmInfantry_WLR.link.wheelLink->mass
       );      
@@ -356,9 +355,8 @@ private:
 			  /*load lqr k table*/
         lqrControllerHandle[i].Gain.matrixHandle = Eigen::Map<Eigen::Matrix<float, 2, 6, Eigen::RowMajor>>(LQRKMatrixData);
 			  /* */
-        if(groundDetection(&stateEstimatorHandle)){
+        if(0 && groundDetection(&stateEstimatorHandle)){
           ground_signal = 1;
-          // if((stateEstimatorHandle.FnEst.Fn[0] < 50.0f && stateEstimatorHandle.FnEst.Fn[1] < 50.0f))
           std::cout << "ground !!!"<<std::endl;
           lqrRevX[i][2] = chassis_ctrl_.target_x[2];
           lqrRevX[i][3] = chassis_ctrl_.target_x[3];
@@ -380,25 +378,19 @@ private:
         }
 			  LQRController_Calc(&lqrControllerHandle[i], chassis_ctrl_.target_x, &lqrRevX[i][0], &lqrOutput[i][0]);
 			  lqrOutput_T[i] =  lqrOutput[i][0];
-			  lqrOutput_Tp[i] = lqrOutput[i][1];
+			  lqrOutput_Tp[i] = lqrOutput[i][1]; 
 		  }
   
 		  /*leg control*/
-		  // float springDampingOut_F[2] = {0};		// [PID] vmc spring-damping output force 
-		  // float feedforwardOut_F[2] = {0};			// [FeedForward] Fn + Fs
-		  // float rollCompensation_F[2] = {0};		// [Compensation]
-		  float phi0Compensation_Tp[2] = {0};			// [Compensation]
-		  float rev_theta[2] = {0};
-		  rev_theta[0] = rmInfantry_WLR.frame.vmc_jointFrame[0].theta;
-		  rev_theta[1] = rmInfantry_WLR.frame.vmc_jointFrame[1].theta;
+		  float phi0Compensation_Tp[2] = {0};   // [Compensation]
 		  legControl(&leg_ControllerHandle, 
         chassis_ctrl_.target_L0, 
-        out_L0, 
+        rev_L0, 
         chassis_ctrl_.target_Roll,
         rmInfantry_WLR.frame.body_worldFrame.rpy[0], 
         rev_theta, 
         chassis_ctrl_.target_fs, 
-        out_phi0, 
+        rev_phi0, 
         phi0Compensation_Tp);
   
 		  /*body yaw rotate control*/
@@ -407,79 +399,76 @@ private:
 		  yawRotateOut_T[0] = -yawRotateOut_T[1];
   
 		  /*inverse dynamics*/
-		  float in_Tp[2], in_F[2], out_T[2];
-      float out_torqueE[2], out_torqueA[2];
+		  float set_Tp[2], set_F[2],  set_T[2], set_torqueA[2], set_torqueE[2];
 		  for(int i = 0; i < 2 ;i++)
 		  {
-			  in_Tp[i] = lqrOutput_Tp[i] + phi0Compensation_Tp[i];
-			  in_F[i]	= leg_ControllerHandle.base[i].F;
-			  out_T[i] = lqrOutput_T[i] + yawRotateOut_T[i];
+			  set_Tp[i] = lqrOutput_Tp[i] + phi0Compensation_Tp[i];
+			  set_F[i]	= leg_ControllerHandle.base[i].F;
+			  set_T[i] = lqrOutput_T[i] + yawRotateOut_T[i];
 		  }
-		  Engine_InverseDynamics(&rmInfantry_WLR, in_Tp, in_F, out_torqueA, out_torqueE, 1);
+		  Engine_InverseDynamics(&rmInfantry_WLR, set_Tp, set_F, set_torqueA, set_torqueE, 0);
 
 		  /*calculate system state-space X_dot  = A*X + B*U*/
-		  float target_phi0[2] = {0};
-		  float target_theta[2] = {0};
-		  float target_phi[2] = {0};
+      float u[2][2], xdot[2][6];
+      for(int i = 0; i < 2; i++){
+        u[i][0] = set_T[i];
+        u[i][1] = set_Tp[i];
+      }
+      Engine_SystemSpaceCalculate(lqrRevX, u, xdot);
+
+		  float set_phi0[2], set_theta[2], set_phi[2];
 		  for(int i = 0; i < 2; i++){
-			  float u[2] = {0};
-			  u[0] = out_T[i];
-			  u[1] = in_Tp[i];
-			  Engine_SystemSpaceCalculate(&lqrRevX[i][0], u, &xdot[i][0]);
 			  // calculate velcotiy q_dot(t) = q_ddot(t-1)*steptime + q_dot(t-1)
 			  // calculate position q(t) = q(t-1) + (q_ddot(t-1)*steptime + q_dot(t-1))*steptime
-			  target_theta[i] = lqrRevX[i][0] + (xdot[i][0] + xdot[i][1]*steptime/1000)*steptime/1000;
-			  target_phi[i] = lqrRevX[i][4] + (xdot[i][4] + xdot[i][5]*steptime/1000)*steptime/1000;
-			  target_phi0[i] = target_theta[i] + target_phi[i] + PI/2;
+			  set_theta[i] = lqrRevX[i][0] + (xdot[i][0] + xdot[i][1]*steptime/1000)*steptime/1000;
+			  set_phi[i] = lqrRevX[i][4] + (xdot[i][4] + xdot[i][5]*steptime/1000)*steptime/1000;
+			  set_phi0[i] = set_theta[i] + set_phi[i] + PI/2;
       }
 
-		  /*inverse kinmatics*/
-		  float in_phi0[2], in_L0[2], out_phi1[2], out_phi4[2];
-		  for(int i = 0; i <2; i++){
-			  in_phi0[i] = target_phi0[i];
-			  in_L0[i] = chassis_ctrl_.target_L0[i];
-		  }
-		  Engine_InverseKinematics(&rmInfantry_WLR, in_phi0, in_L0, out_phi1, out_phi4);
-
+		  /*calculate target joint position*/
+		  float set_L0[2], set_phi1[2], set_phi4[2];
+      set_L0[0] = chassis_ctrl_.target_L0[0];
+      set_L0[1] = chassis_ctrl_.target_L0[1];
+		  Engine_InverseKinematics(&rmInfantry_WLR, set_phi0, set_L0, set_phi1, set_phi4);
 
   
 		  /*PT-Mix Control*/
 		  // limit the q-v-t value
 		  for(int i = 0; i < 2; i++){
-			  if(out_phi1[i] < CHASSIS_HIPJOINT_MIN_POS){
-				  out_phi1[i] = CHASSIS_HIPJOINT_MIN_POS;
-			  }else if(out_phi1[i] > CHASSIS_HIPJOINT_MAX_POS){
-				  out_phi1[i] = CHASSIS_HIPJOINT_MAX_POS;
+			  if(set_phi1[i] < CHASSIS_HIPJOINT_MIN_POS){
+				  set_phi1[i] = CHASSIS_HIPJOINT_MIN_POS;
+			  }else if(set_phi1[i] > CHASSIS_HIPJOINT_MAX_POS){
+				  set_phi1[i] = CHASSIS_HIPJOINT_MAX_POS;
 			  }
-			  if(out_phi4[i] < PI - CHASSIS_HIPJOINT_MAX_POS){
-				  out_phi4[i] = PI - CHASSIS_HIPJOINT_MAX_POS;
-			  }else if(out_phi4[i] > PI - CHASSIS_HIPJOINT_MIN_POS){
-				  out_phi4[i] = PI - CHASSIS_HIPJOINT_MIN_POS;
+			  if(set_phi4[i] < PI - CHASSIS_HIPJOINT_MAX_POS){
+				  set_phi4[i] = PI - CHASSIS_HIPJOINT_MAX_POS;
+			  }else if(set_phi4[i] > PI - CHASSIS_HIPJOINT_MIN_POS){
+				  set_phi4[i] = PI - CHASSIS_HIPJOINT_MIN_POS;
 			  }
 
-        if(out_torqueA[i] > 50.0f){
-          out_torqueA[i] = 50.0f;
-        }else if(out_torqueA[i] <-50.0f){
-          out_torqueA[i] = -50.0f;
+        if(set_torqueA[i] > 50.0f){
+          set_torqueA[i] = 50.0f;
+        }else if(set_torqueA[i] <-50.0f){
+          set_torqueA[i] = -50.0f;
         }
-        if(out_torqueE[i] > 50.0f){
-          out_torqueE[i] = 50.0f;
-        }else if(out_torqueE[i] <-50.0f){
-          out_torqueE[i] = -50.0f;
+        if(set_torqueE[i] > 50.0f){
+          set_torqueE[i] = 50.0f;
+        }else if(set_torqueE[i] <-50.0f){
+          set_torqueE[i] = -50.0f;
         }
 
-        if(wheelJoint_setT[i] > 5.0f){
-          wheelJoint_setT[i] = 5.0f;
-        }else if(wheelJoint_setT[i] <-5.0f){
-          wheelJoint_setT[i] = -5.0f;
+        if(set_T[i] > 5.0f){
+          set_T[i] = 5.0f;
+        }else if(set_T[i] <-5.0f){
+          set_T[i] = -5.0f;
         }
 		  }
       //fivelink joint frame map to joint space 
       for(int i = 0; i < 2; i++){
-        hipJoint_setP[i*2 + 0] = out_phi1[i];
-        hipJoint_setP[i*2 + 1] = out_phi4[i];
-        hipJoint_setT[i*2 + 0] = out_torqueA[i];
-        hipJoint_setT[i*2 + 1] = out_torqueE[i];
+        hipJoint_setP[i*2 + 0] = set_phi1[i];
+        hipJoint_setP[i*2 + 1] = set_phi4[i];
+        hipJoint_setT[i*2 + 0] = set_torqueA[i];
+        hipJoint_setT[i*2 + 1] = set_torqueE[i];
       }
 		  for(int i=0; i < 4; i++){
 			  hipJoint_setP[i] = (hipJointConfig[i].ifInvertPos ? -1 : 1) * (hipJoint_setP[i] - hipJointConfig[i].posOffset);
@@ -496,7 +485,7 @@ private:
         chassis_cmd_.joint[index].v_kd = 0;
 		  }
 		  for(int i = 0; i < 2; i++){
-			  wheelJoint_setT[i] = (wheelJointConfig[i].ifInvertTorque ? -1 : 1) * out_T[i];
+			  wheelJoint_setT[i] = (wheelJointConfig[i].ifInvertTorque ? -1 : 1) * set_T[i];
 
         uint8_t index = wheelJointConfig[i].index;
         chassis_cmd_.joint[index].mode = 0;
@@ -534,6 +523,7 @@ private:
   rclcpp::TimerBase::SharedPtr debug_timer_;
 
   uint8_t ground_signal = 0;
+  float rev_Tp[2], rev_F[2];
 };
 
 int main(int argc, char ** argv){
