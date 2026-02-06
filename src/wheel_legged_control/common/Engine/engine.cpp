@@ -17,6 +17,7 @@
   ****************************(C) COPYRIGHT 2024 征途****************************
   */
 #include "engine.hpp"
+#include <iostream>
 
 
 
@@ -139,10 +140,10 @@ void Engine_ModelInit(EngineModel_t* model)
 */
 void Engine_ForwardKinematics(
     EngineModel_t* model, 
-    const float* phi1, 
-    const float* phi4, 
-    float* phi0, 
-    float* L0,
+    const float phi1[2], 
+    const float phi4[2], 
+    float phi0[2], 
+    float L0[2],
     EngineBool_t ifUpdate
 )
 {
@@ -191,7 +192,7 @@ void Engine_ForwardKinematics(
         // step6
         float phi3 = std::atan2(y_c-y_d, x_c-x_d);
 
-        if(!ifUpdate){return;}
+        if(!ifUpdate){continue;}
         model->frame.fiveLink_jointFrame[i].L0 = L0[i];
         model->frame.fiveLink_jointFrame[i].phi[0] = phi0[i];
         model->frame.fiveLink_jointFrame[i].phi[1] = phi1[i]; 
@@ -200,17 +201,17 @@ void Engine_ForwardKinematics(
         model->frame.fiveLink_jointFrame[i].phi[4] = phi4[i];
 
         // model->frame.vmc_jointFrame[i].last_theta = model->frame.vmc_jointFrame[i].theta;
-        // model->frame.vmc_jointFrame[i].last_aphi = model->frame.vmc_jointFrame[i].aphi;
+        // model->frame.vmc_jointFrame[i].last_alpha = model->frame.vmc_jointFrame[i].alpha;
         model->frame.vmc_jointFrame[i].theta = phi0[i] - model->frame.body_worldFrame.rpy[1] - PI/2;
-        model->frame.vmc_jointFrame[i].aphi = phi0[i] - PI/2;
+        model->frame.vmc_jointFrame[i].alpha = phi0[i] - PI/2;
         // update history data
         for(int j = 1; j < HISTORY_NUMS; j++){
             model->frame.vmc_jointFrame[i].theta_arr[HISTORY_NUMS-j] = model->frame.vmc_jointFrame[i].theta_arr[HISTORY_NUMS-1-j];
-            model->frame.vmc_jointFrame[i].aphi_arr[HISTORY_NUMS-j] = model->frame.vmc_jointFrame[i].aphi_arr[HISTORY_NUMS-1-j];
+            model->frame.vmc_jointFrame[i].alpha_arr[HISTORY_NUMS-j] = model->frame.vmc_jointFrame[i].alpha_arr[HISTORY_NUMS-1-j];
             model->frame.fiveLink_jointFrame[i].L0_arr[HISTORY_NUMS-j] = model->frame.fiveLink_jointFrame[i].L0_arr[HISTORY_NUMS-1-j];
         }
         model->frame.vmc_jointFrame[i].theta_arr[0] = model->frame.vmc_jointFrame[i].theta;
-        model->frame.vmc_jointFrame[i].aphi_arr[0] = model->frame.vmc_jointFrame[i].aphi;
+        model->frame.vmc_jointFrame[i].alpha_arr[0] = model->frame.vmc_jointFrame[i].alpha;
         model->frame.fiveLink_jointFrame[i].L0_arr[0] = L0[i];
     }
 } 
@@ -229,10 +230,10 @@ void Engine_ForwardKinematics(
 */
 void Engine_InverseKinematics(
     EngineModel_t* model,
-    const float* phi0,
-    const float* L0,
-    float* phi1,
-    float* phi4
+    const float phi0[2],
+    const float L0[2],
+    float phi1[2],
+    float phi4[2]
 )
 {
     if(model == NULL || phi1 == NULL || phi4 == NULL || phi0 == NULL || L0 == NULL){
@@ -272,10 +273,10 @@ void Engine_InverseKinematics(
 */
 void Engine_ForwardDynamics(
     EngineModel_t* model, 
-    const float* torqueA, 
-    const float* torqueE, 
-    float* Tp, 
-    float* F,
+    const float torqueA[2], 
+    const float torqueE[2], 
+    float Tp[2], 
+    float F[2],
     EngineBool_t ifUpdate
 ){
     if(model == NULL || Tp == NULL || F == NULL || torqueA == NULL || torqueE == NULL){
@@ -339,11 +340,11 @@ void Engine_ForwardDynamics(
         Tp[i] = out4MatrixHandle(0);
         F[i] = out4MatrixHandle(1); 
 
-        if(!ifUpdate){return;}
-        // model->frame.fiveLink_forceFrame[i].Fx = out2MatrixHandle.pData[0];
-        // model->frame.fiveLink_forceFrame[i].Fy = out2MatrixHandle.pData[1];
-        // model->frame.vmc_forceFrame[i].F = FMatrixHandle.pData[1];
-        // model->frame.vmc_forceFrame[i].Tp = FMatrixHandle.pData[0];
+        if(!ifUpdate){continue;}
+        model->frame.fiveLink_forceFrame[i].Fx = out2MatrixHandle(0);
+        model->frame.fiveLink_forceFrame[i].Fy = out2MatrixHandle(1);
+        model->frame.vmc_forceFrame[i].F = F[i];
+        model->frame.vmc_forceFrame[i].Tp = Tp[i];
     }       
 }
 
@@ -361,10 +362,10 @@ void Engine_ForwardDynamics(
 */
 void Engine_InverseDynamics(
     EngineModel_t* model, 
-    const float* Tp, 
-    const float* F,
-    float* torqueA, 
-    float* torqueE,
+    const float Tp[2], 
+    const float F[2],
+    float torqueA[2], 
+    float torqueE[2],
     EngineBool_t ifUpdate
 )
 {
@@ -425,7 +426,7 @@ void Engine_InverseDynamics(
         torqueA[i] = out3MatrixHandle(0);
         torqueE[i] = out3MatrixHandle(1); 
 
-        if(!ifUpdate){return;}
+        if(!ifUpdate){continue;}
         model->frame.fiveLink_forceFrame[i].Fx = out2MatrixHandle(0);
         model->frame.fiveLink_forceFrame[i].Fy = out2MatrixHandle(1);
         model->frame.vmc_forceFrame[i].F = FMatrixHandle(1);
@@ -443,85 +444,88 @@ void Engine_InverseDynamics(
 * @param[out]   x_dot:系统状态微分矩阵 维度:6x1 
 */
 void Engine_SystemSpaceCalculate(
-    float* x,
-    float* u,
-    float* x_dot
+    float x[2][6],
+    float u[2][2],
+    float x_dot[2][6]
 ){
     if(x == NULL || u == NULL || x_dot == NULL){
         return;
     }
-    Eigen::MatrixXf XMatrixHandle(6,1);
-    float XMatrixData[6*1] = {0};
-    Eigen::MatrixXf UMatrixHandle(2,1);
-    float UMatrixData[2*1] = {0};
-    memcpy(XMatrixData, x, (XMatrixHandle.cols()*XMatrixHandle.rows())*sizeof(float));
-    memcpy(UMatrixData, u, (UMatrixHandle.cols()*UMatrixHandle.rows())*sizeof(float));
-
-    XMatrixHandle = Eigen::Map<Eigen::Matrix<float, 6, 1>>(XMatrixData);
-    UMatrixHandle = Eigen::Map<Eigen::Matrix<float, 2, 1>>(UMatrixData);
-
-    Eigen::MatrixXf AXMatrixHandle(6,1);
-    float AXMatrixData[6*1] = {0}; 
-    Eigen::MatrixXf BUMatrixHandle(6,1);
-    float BUMatrixData[6*1] = {0}; 
-    Eigen::MatrixXf XdotMatrixHandle(6,1);
-    float XdotMatrixData[6*1] = {0}; 
-
-    AXMatrixHandle = Eigen::Map<Eigen::Matrix<float, 6, 1>>(AXMatrixData);
-    BUMatrixHandle = Eigen::Map<Eigen::Matrix<float, 6, 1>>(BUMatrixData);
-    XdotMatrixHandle = Eigen::Map<Eigen::Matrix<float, 6, 1>>(XdotMatrixData);
-    /*x_dot = A*x + B*u*/
-    AXMatrixHandle = modelAMatrixHandle * XMatrixHandle;
-    BUMatrixHandle = modelBMatrixHandle * UMatrixHandle;
-    XdotMatrixHandle = AXMatrixHandle + BUMatrixHandle;
-
-    memcpy(x_dot, XdotMatrixData, (XdotMatrixHandle.cols()*XdotMatrixHandle.rows())*sizeof(float));
-}
-
-void Engine_FnCalculate(
-EngineModel_t* model,
-float  steptime,
-float* Fn
-){
-    if(model == NULL || Fn == NULL){
-        return;
-    }
-    static float L0Array[2][3 + 1] = {0};
-    static float thetaArray[2][3 + 1] = {0};
-    /*step1:torqueA:torqueE map to Tp:Fn*/
-    float torqueA[2] = {model->joint.hipJoint[0].t, model->joint.hipJoint[1].t};
-    float torqueE[2] = {model->joint.hipJoint[3].t, model->joint.hipJoint[2].t};
-    float Tp[2] = {0};
-    float F[2] = {0};
-    Engine_ForwardDynamics(model, torqueA, torqueE, Tp, F, 0);
     for(int i = 0; i < 2; i++){
-        /*step2:calculate the wheel acc*/
-        if(L0Array[i][0] == 0 || thetaArray[i][0] == 0){
-            L0Array[i][0] = 1;
-            thetaArray[i][0] = 1;
-            L0Array[i][1] = L0Array[i][2] = L0Array[i][3] = model->frame.fiveLink_jointFrame[i].L0;
-            thetaArray[i][1] = thetaArray[i][2] = thetaArray[i][3] = model->frame.vmc_jointFrame[i].theta;
-        }
-        for(int j = 0; j < 2; j++){
-            L0Array[i][3-j] = L0Array[i][3-j -1];
-            thetaArray[i][3-j] = thetaArray[i][3-j -1];
-        }
-        L0Array[i][1] = model->frame.fiveLink_jointFrame[i].L0;
-        thetaArray[i][1] =  model->frame.vmc_jointFrame[i].theta;
-
-        float zmddot = model->frame.body_worldFrame.a[2];
-        float L0ddot = ( (L0Array[i][1] - L0Array[i][2])/steptime - (L0Array[i][2] - L0Array[i][3])/steptime ) / steptime;
-        float L0dot = (L0Array[i][1] - L0Array[i][2])/steptime;
-        float thetaddot =  ( (thetaArray[i][1] - thetaArray[i][2])/steptime - (thetaArray[i][2] - thetaArray[i][3])/steptime ) / steptime;
-        float thetadot = (thetaArray[i][1] - thetaArray[i][2])/steptime;
-        float zwddot =  zmddot - L0ddot*std::cos(thetaArray[i][1]) + 2*L0dot*thetadot*std::sin(thetaArray[i][1]) + L0Array[i][1]*( thetaddot*std::sin(thetaArray[i][1]) + thetadot*thetadot*std::cos(thetaArray[i][1]) );
-
-        /*step3:P = Fcos(theta) + Tp*sin(theta)/L0*/
-        float P = F[i]*std::cos(thetaArray[i][1]) + Tp[i]*std::sin(thetaArray[i][1])/L0Array[i][1];
-        /*step4:fn = mw*zwddot + p + mw*g*/
-        Fn[i] = P + model->link.wheelLink[i].mass* (9.8 + zwddot); 
+        Eigen::MatrixXf XMatrixHandle(6,1);
+        float XMatrixData[6*1] = {0};
+        Eigen::MatrixXf UMatrixHandle(2,1);
+        float UMatrixData[2*1] = {0};
+        memcpy(XMatrixData, &x[i], (XMatrixHandle.cols()*XMatrixHandle.rows())*sizeof(float));
+        memcpy(UMatrixData, &u[i], (UMatrixHandle.cols()*UMatrixHandle.rows())*sizeof(float));
+    
+        XMatrixHandle = Eigen::Map<Eigen::Matrix<float, 6, 1>>(XMatrixData);
+        UMatrixHandle = Eigen::Map<Eigen::Matrix<float, 2, 1>>(UMatrixData);
+    
+        Eigen::MatrixXf AXMatrixHandle(6,1);
+        float AXMatrixData[6*1] = {0}; 
+        Eigen::MatrixXf BUMatrixHandle(6,1);
+        float BUMatrixData[6*1] = {0}; 
+        Eigen::MatrixXf XdotMatrixHandle(6,1);
+        float XdotMatrixData[6*1] = {0}; 
+    
+        AXMatrixHandle = Eigen::Map<Eigen::Matrix<float, 6, 1>>(AXMatrixData);
+        BUMatrixHandle = Eigen::Map<Eigen::Matrix<float, 6, 1>>(BUMatrixData);
+        XdotMatrixHandle = Eigen::Map<Eigen::Matrix<float, 6, 1>>(XdotMatrixData);
+        /*x_dot = A*x + B*u*/
+        AXMatrixHandle = modelAMatrixHandle * XMatrixHandle;
+        BUMatrixHandle = modelBMatrixHandle * UMatrixHandle;
+        XdotMatrixHandle = AXMatrixHandle + BUMatrixHandle;
+    
+        memcpy(&x_dot[i], XdotMatrixData, (XdotMatrixHandle.cols()*XdotMatrixHandle.rows())*sizeof(float));
     }
+
 }
+
+// void Engine_FnCalculate(
+// EngineModel_t* model,
+// float  steptime,
+// float* Fn
+// ){
+//     if(model == NULL || Fn == NULL){
+//         return;
+//     }
+//     static float L0Array[2][3 + 1] = {0};
+//     static float thetaArray[2][3 + 1] = {0};
+//     /*step1:torqueA:torqueE map to Tp:Fn*/
+//     float torqueA[2] = {model->joint.hipJoint[0].t, model->joint.hipJoint[1].t};
+//     float torqueE[2] = {model->joint.hipJoint[3].t, model->joint.hipJoint[2].t};
+//     float Tp[2] = {0};
+//     float F[2] = {0};
+//     Engine_ForwardDynamics(model, torqueA, torqueE, Tp, F, 0);
+//     for(int i = 0; i < 2; i++){
+//         /*step2:calculate the wheel acc*/
+//         if(L0Array[i][0] == 0 || thetaArray[i][0] == 0){
+//             L0Array[i][0] = 1;
+//             thetaArray[i][0] = 1;
+//             L0Array[i][1] = L0Array[i][2] = L0Array[i][3] = model->frame.fiveLink_jointFrame[i].L0;
+//             thetaArray[i][1] = thetaArray[i][2] = thetaArray[i][3] = model->frame.vmc_jointFrame[i].theta;
+//         }
+//         for(int j = 0; j < 2; j++){
+//             L0Array[i][3-j] = L0Array[i][3-j -1];
+//             thetaArray[i][3-j] = thetaArray[i][3-j -1];
+//         }
+//         L0Array[i][1] = model->frame.fiveLink_jointFrame[i].L0;
+//         thetaArray[i][1] =  model->frame.vmc_jointFrame[i].theta;
+
+//         float zmddot = model->frame.body_worldFrame.a[2];
+//         float L0ddot = ( (L0Array[i][1] - L0Array[i][2])/steptime - (L0Array[i][2] - L0Array[i][3])/steptime ) / steptime;
+//         float L0dot = (L0Array[i][1] - L0Array[i][2])/steptime;
+//         float thetaddot =  ( (thetaArray[i][1] - thetaArray[i][2])/steptime - (thetaArray[i][2] - thetaArray[i][3])/steptime ) / steptime;
+//         float thetadot = (thetaArray[i][1] - thetaArray[i][2])/steptime;
+//         float zwddot =  zmddot - L0ddot*std::cos(thetaArray[i][1]) + 2*L0dot*thetadot*std::sin(thetaArray[i][1]) + L0Array[i][1]*( thetaddot*std::sin(thetaArray[i][1]) + thetadot*thetadot*std::cos(thetaArray[i][1]) );
+
+//         /*step3:P = Fcos(theta) + Tp*sin(theta)/L0*/
+//         float P = F[i]*std::cos(thetaArray[i][1]) + Tp[i]*std::sin(thetaArray[i][1])/L0Array[i][1];
+//         /*step4:fn = mw*zwddot + p + mw*g*/
+//         Fn[i] = P + model->link.wheelLink[i].mass* (9.8 + zwddot); 
+//     }
+// }
 
 void PrintEngineModelInfo(const EngineModel_t* model) {
     std::cout << "\n========== EngineModel Debug Info ==========" << std::endl;
@@ -557,7 +561,7 @@ void PrintEngineModelInfo(const EngineModel_t* model) {
         // VMC关节帧
         std::cout << "VMC Joint Frame:" << std::endl;
         std::cout << "  Theta: " << std::setw(10) << model->frame.vmc_jointFrame[side].theta 
-                  << " rad, APhi: " << std::setw(10) << model->frame.vmc_jointFrame[side].aphi << " rad" << std::endl;
+                  << " rad, APhi: " << std::setw(10) << model->frame.vmc_jointFrame[side].alpha << " rad" << std::endl;
         
         // VMC力帧
         std::cout << "VMC Force Frame:" << std::endl;

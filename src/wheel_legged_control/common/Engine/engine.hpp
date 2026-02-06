@@ -46,8 +46,8 @@ typedef struct{
 
 typedef struct{
     float mass;             //质量描述                        单位:kg
-    float l;                //虚拟连杆的转轴到机体质心的距离   单位:m
-    float inertia;          //转动惯量描述                    单位:kg*m^2
+    float l;                //虚拟连杆的转轴到机体质心的距离      单位:m
+    float inertia;          //转动惯量描述                     单位:kg*m^2
 }EngineBodyLink_t;// 初始化设置
 
 typedef struct{
@@ -65,9 +65,9 @@ typedef struct{
 
 typedef struct{
     float theta;            //虚拟杆在世界坐标系下与竖直方向的夹角      单位:rad
-    float aphi;             //虚拟杆在机体坐标系下与竖直方向的夹角      单位:rad
+    float alpha;             //虚拟杆在机体坐标系下与竖直方向的夹角      单位:rad
     float theta_arr[HISTORY_NUMS];    //储存历史数据
-    float aphi_arr[HISTORY_NUMS];     //储存历史数据
+    float alpha_arr[HISTORY_NUMS];     //储存历史数据
 }EngineVMCJointFrame_t;// 通过电机反馈进行更新
 
 typedef struct{
@@ -148,10 +148,10 @@ void Engine_ModelInit(EngineModel_t* model);
 */
 void Engine_ForwardKinematics(
     EngineModel_t* model, 
-    const float* phi1, 
-    const float* phi4, 
-    float* phi0, 
-    float* L0,
+    const float phi1[2], 
+    const float phi4[2], 
+    float phi0[2], 
+    float L0[2],
     EngineBool_t ifUpdate
 );
 
@@ -168,10 +168,10 @@ void Engine_ForwardKinematics(
 */
 void Engine_InverseKinematics(
     EngineModel_t* model,
-    const float* phi0,
-    const float* L0,
-    float* phi1,
-    float* phi4
+    const float phi0[2],
+    const float L0[2],
+    float phi1[2],
+    float phi4[2]
 );
 
 /**
@@ -187,10 +187,10 @@ void Engine_InverseKinematics(
 */
 void Engine_ForwardDynamics(
     EngineModel_t* model, 
-    const float* torqueA, 
-    const float* torqueE, 
-    float* Tp, 
-    float* F,
+    const float torqueA[2], 
+    const float torqueE[2], 
+    float Tp[2], 
+    float F[2],
     EngineBool_t ifUpdate
 );
 
@@ -207,10 +207,10 @@ void Engine_ForwardDynamics(
 */
 void Engine_InverseDynamics(
     EngineModel_t* model, 
-    const float* Tp, 
-    const float* F,
-    float* torqueA, 
-    float* torqueE,
+    const float Tp[2], 
+    const float F[2],
+    float torqueA[2], 
+    float torqueE[2],
     EngineBool_t ifUpdate
 );
 
@@ -224,9 +224,9 @@ void Engine_InverseDynamics(
 * @param[out]   x_dot:系统状态微分矩阵 维度:6x1 
 */
 void Engine_SystemSpaceCalculate(
-    float* x,
-    float* u,
-    float* x_dot
+    float x[2][6],
+    float u[2][2],
+    float x_dot[2][6]
 );
 
 void PrintEngineModelInfo(const EngineModel_t* model); 
