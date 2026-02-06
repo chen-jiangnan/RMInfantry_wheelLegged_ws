@@ -20,11 +20,13 @@
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
 
-    <geom pos="-10 0 0.0" type="box"  size="2 2 0.4" quat="1.0 0 0 0"/>
+    <geom pos="-5 0 0.0" type="box"  size="2 2 0.2" quat="1.0 0 0 0" />
+    <geom pos="-5 0 0.3" type="box"  size="1.5 1.5 0.2" quat="1.0 0 0 0" />
+    <geom pos="-5 0 0.6" type="box"  size="1.0 1.0 0.2" quat="1.0 0 0 0" />
 
+    <geom pos="5 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
+    <geom pos="6.5 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
     <geom pos="8 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
-    <geom pos="12 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
-    <geom pos="16 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/>
 
     <geom pos="23 0 0.02" type="box"  size="0.2 2 0.15" quat="1.0 0 0 0"/>
     <geom pos="26 0 0.02" type="box"  size="0.22 2 0.3" quat="1.0 0 0 0"/>
