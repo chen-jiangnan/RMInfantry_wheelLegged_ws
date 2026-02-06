@@ -12,3 +12,5 @@ PidControllerTrace rotatectrl
 StateEstimatorTrace state_est
 
 uint8 ground_signal
+float32[2] fd_tp
+float32[2] fd_f
