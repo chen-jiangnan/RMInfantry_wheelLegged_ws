@@ -34,6 +34,10 @@ public:
 
     bool use_auto_adjustment = true;
 
+    const Eigen::VectorXf& getZVector() const {return z;}
+    const Eigen::MatrixXf& getHMatrix() const {return H;}
+    const Eigen::MatrixXf& getRMatrix() const {return R;}
+    const Eigen::MatrixXf& getKMatrix() const {return K;}
     void debugPrint(const std::string& title = "") const;
 
 private:
