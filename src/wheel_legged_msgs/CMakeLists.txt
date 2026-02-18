@@ -17,24 +17,31 @@ find_package(std_msgs REQUIRED)
 set(msg_files
   # Common MSG
   "msg/Common/Controller/PidControllerTrace.msg"
+  "msg/Common/Controller/LegControllerTrace.msg"
+  "msg/Common/Controller/LqrControllerTrace.msg"
+  "msg/Common/Controller/RotateControllerTrace.msg"
+  "msg/Common/Controller/StateEstimatorTrace.msg"
+
+  "msg/Common/Obersver/KalmanFilterTrace.msg"
   "msg/Common/Obersver/FnEstimatorTrace.msg"
   "msg/Common/Obersver/XVEstimatorTrace.msg"
 
-  # High Level Control MSG
-  "msg/HighLevelControl/Sport/WheelLegged/BodyWorldFrame.msg"
-  "msg/HighLevelControl/Sport/WheelLegged/FiveLinkJointFrame.msg"
-  "msg/HighLevelControl/Sport/WheelLegged/FiveLinkForceFrame.msg"
-  "msg/HighLevelControl/Sport/WheelLegged/LegVmcJointFrame.msg"
-  "msg/HighLevelControl/Sport/WheelLegged/LegVmcForceFrame.msg"
-  "msg/HighLevelControl/Sport/WheelLegged/LqrControllerTrace.msg"
-  "msg/HighLevelControl/Sport/WheelLegged/LegControllerTrace.msg"
-  "msg/HighLevelControl/Sport/WheelLegged/StateEstimatorTrace.msg"
+  "msg/Common/Model/BodyWorldFrame.msg"
+  "msg/Common/Model/FiveLinkJointFrame.msg"
+  "msg/Common/Model/FiveLinkForceFrame.msg"
+  "msg/Common/Model/LegVmcJointFrame.msg"
+  "msg/Common/Model/LegVmcForceFrame.msg"
+  "msg/Common/Model/WheelLeggedRobotState.msg"
 
+
+  # High Level Control MSG\
   "msg/HighLevelControl/Sport/ChassisCtrl.msg"
   "msg/HighLevelControl/Sport/ChassisState.msg"
 
   "msg/HighLevelControl/JointCmd.msg"
   "msg/HighLevelControl/JointState.msg"
+  "msg/HighLevelControl/JointCmds.msg"
+  "msg/HighLevelControl/JointStates.msg"
   "msg/HighLevelControl/ChassisJointCmd.msg"
   "msg/HighLevelControl/ChassisJointState.msg"
   "msg/HighLevelControl/GimbalJointCmd.msg"

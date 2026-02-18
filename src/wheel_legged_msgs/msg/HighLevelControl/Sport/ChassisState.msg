@@ -1,16 +1,6 @@
-std_msgs/Header header
-
-FiveLinkJointFrame[2] fivelink_jointframe
-FiveLinkForceFrame[2] fivelink_forceframe
-LegVmcJointFrame[2]   legvmc_jointframe
-LegVmcForceFrame[2]   legvmc_forceframe
-BodyWorldFrame     body_worldframe
-
-LqrControllerTrace[2] lqrctrl
-LegControllerTrace legctrl
-PidControllerTrace rotatectrl
+uint8 joint_fsm_mode
+WheelLeggedRobotState robot_state
+LegControllerTrace leg_ctrl
+LqrControllerTrace lqr_ctrl
+RotateControllerTrace rotate_ctrl
 StateEstimatorTrace state_est
-
-uint8 ground_signal
-float32[2] fd_tp
-float32[2] fd_f
