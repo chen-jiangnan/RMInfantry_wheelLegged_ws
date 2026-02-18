@@ -169,10 +169,10 @@ public:
         {
             std::lock_guard<std::mutex> lock(lowcmd->mutex_);
             for(int i(0); i<num_motor_; i++) {
-                auto & m = lowcmd->motor_state()[i];
+                auto & m = lowcmd->motor_cmd()[i];
                 mj_data_->ctrl[i] = m.tau() +
-                                    m.p_kp() * (m.q() - mj_data_->sensordata[i]) +
-                                    m.p_kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
+                                    m.kp() * (m.q() - mj_data_->sensordata[i]) +
+                                    m.kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
             }
         }
 
@@ -181,7 +181,7 @@ public:
             for(int i(0); i<num_motor_; i++) {
                 lowstate->motor_state()[i].q() = mj_data_->sensordata[i];
                 lowstate->motor_state()[i].dq() = mj_data_->sensordata[i + num_motor_];
-                lowstate->motor_state()[i].tau_est() = mj_data_->sensordata[i + 2 * num_motor_];
+                lowstate->motor_state()[i].tau() = mj_data_->sensordata[i + 2 * num_motor_];
             }
             
             // 更新底盘IMU状态

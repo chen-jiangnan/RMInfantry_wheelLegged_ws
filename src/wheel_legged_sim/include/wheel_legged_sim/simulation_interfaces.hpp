@@ -116,43 +116,39 @@ private:
 class MotorCmd_t
 {
 public:
-    MotorCmd_t() : mode_(0), q_(0), dq_(0), tau_(0), p_kp_(0), p_kd_(0), v_kp_(0), v_kd_(0) {}
+    MotorCmd_t() : mode_(0), q_(0), dq_(0), tau_(0), kp_(0), kd_(0) {}
     
     uint8_t& mode() { return mode_; }
     double& q() { return q_; }
     double& dq() { return dq_; }
     double& tau() { return tau_; }
-    double& p_kp() { return p_kp_; }
-    double& p_kd() { return p_kd_; }
-    double& v_kp() { return v_kp_; }
-    double& v_kd() { return v_kd_; }
+    double& kp() { return kp_; }
+    double& kd() { return kd_; }
     
 private:
     uint8_t mode_;
     double q_;
     double dq_;
     double tau_;
-    double p_kp_;
-    double p_kd_;
-    double v_kp_;
-    double v_kd_;
+    double kp_;
+    double kd_;
 };
 
 class MotorState_t
 {
 public:
-    MotorState_t() : mode_(0), q_(0), dq_(0), tau_est_(0) {}
+    MotorState_t() : mode_(0), q_(0), dq_(0), tau_(0) {}
     
     uint8_t& mode() { return mode_; }
     double& q() { return q_; }
     double& dq() { return dq_; }
-    double& tau_est() { return tau_est_; }
+    double& tau() { return tau_; }
     
 private:
     uint8_t mode_;
     double q_;
     double dq_;
-    double tau_est_;
+    double tau_;
 };
 
 class LowState_t
@@ -199,13 +195,13 @@ class LowCmd_t
 {
 public:
     LowCmd_t(){}
-    MotorCmd_t* motor_state(){return motor_state_;}
+    MotorCmd_t* motor_cmd(){return motor_cmd_;}
     
     // 互斥锁，用于保护多线程访问
     std::mutex mutex_;
     
 private:
-    MotorCmd_t motor_state_[11];
+    MotorCmd_t motor_cmd_[11];
 };
 
 class HighState_t

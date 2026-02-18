@@ -20,7 +20,19 @@
 #include <rclcpp/qos.hpp>
 #include <rclcpp/timer.hpp>
 #include <sensor_msgs/msg/detail/imu__struct.hpp>
+#include <wheel_legged_msgs/msg/detail/chassis_joint_cmd__builder.hpp>
 #include <wheel_legged_msgs/msg/detail/imu_state__struct.hpp>
+#include <wheel_legged_msgs/msg/detail/joint_cmds__struct.hpp>
+#include <wheel_legged_msgs/msg/detail/joint_state__struct.hpp>
+#include <wheel_legged_msgs/msg/detail/joint_states__struct.hpp>
+// 公共接口头文件 - 用于 ROS2 消息类型注册
+#include "wheel_legged_msgs/msg/joint_states.hpp"
+#include "wheel_legged_msgs/msg/joint_cmds.hpp"
+#include "wheel_legged_msgs/msg/gimbal_joint_state.hpp"
+#include "wheel_legged_msgs/msg/gimbal_joint_cmd.hpp"
+#include "wheel_legged_msgs/msg/shoot_joint_state.hpp"
+#include "wheel_legged_msgs/msg/shoot_joint_cmd.hpp"
+#include "wheel_legged_msgs/msg/imu_state.hpp"
 #define private public
 #include "glfw_adapter.h"
 #undef private
@@ -625,13 +637,12 @@ public:
     RCLCPP_INFO(this->get_logger(), "%s节点已启动.", name.c_str());
 
     // 创建 chassisMotorState 发布者
-    chassis_motorState_publisher_ = this->create_publisher<wheel_legged_msgs::msg::ChassisJointState>(
+    chassis_motorState_publisher_ = this->create_publisher<wheel_legged_msgs::msg::JointStates>(
       "simulation/chassisMotorState", 10);
     // 创建 chassisMotorCmd 订阅者  
-    chassis_motorCmd_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::ChassisJointCmd>(
+    chassis_motorCmd_subscriber_ = this->create_subscription<wheel_legged_msgs::msg::JointCmds>(
       "simulation/chassisMotorCmd", 10, 
       std::bind(&MujocoSimNode::ChassisMotorCmd_callback, this, std::placeholders::_1));
-
     // 创建 GimablMotorState 发布者
     gimbal_motorState_publisher_ = this->create_publisher<wheel_legged_msgs::msg::GimbalJointState>(
       "simulation/gimbalMotorState", 10);
@@ -694,20 +705,19 @@ private:
   }
 
   // lowcmd 回调函数
-  void ChassisMotorCmd_callback(const wheel_legged_msgs::msg::ChassisJointCmd::SharedPtr msg) {
+  void ChassisMotorCmd_callback(const wheel_legged_msgs::msg::JointCmds::SharedPtr msg) {
     if(data_exchange_running_){
       // std::lock_guard<std::mutex> lock(robot_bridge_->lowcmd->mutex_);
+
       for(size_t i = 0; i < 6; i++) {
-        if(i < msg->joint_cmd.size()) {
-          auto & motor_cmd = robot_bridge_->lowcmd->motor_state()[i];
-          motor_cmd.mode() = msg->joint_cmd[i].mode;
-          motor_cmd.q() = static_cast<double>(msg->joint_cmd[i].q);
-          motor_cmd.dq() = static_cast<double>(msg->joint_cmd[i].dq);
-          motor_cmd.tau() = static_cast<double>(msg->joint_cmd[i].tau);
-          motor_cmd.p_kp() = static_cast<double>(msg->joint_cmd[i].p_kp);
-          motor_cmd.p_kd() = static_cast<double>(msg->joint_cmd[i].p_kd);
-          motor_cmd.v_kp() = static_cast<double>(msg->joint_cmd[i].v_kp);
-          motor_cmd.v_kd() = static_cast<double>(msg->joint_cmd[i].v_kd);
+        if(i < msg->joint_cmds.size()) {
+          auto & motor_cmd = robot_bridge_->lowcmd->motor_cmd()[i];
+          motor_cmd.mode() = msg->joint_cmds[i].mode;
+          motor_cmd.q() = static_cast<double>(msg->joint_cmds[i].q);
+          motor_cmd.dq() = static_cast<double>(msg->joint_cmds[i].dq);
+          motor_cmd.tau() = static_cast<double>(msg->joint_cmds[i].tau);
+          motor_cmd.kp() = static_cast<double>(msg->joint_cmds[i].kp);
+          motor_cmd.kd() = static_cast<double>(msg->joint_cmds[i].kd);
         }
       }
     }
@@ -717,15 +727,13 @@ private:
       // std::lock_guard<std::mutex> lock(robot_bridge_->lowcmd->mutex_);
       for(size_t i = 0; i < 3; i++) {
         if(i < msg->joint_cmd.size()) {
-          auto & motor_cmd = robot_bridge_->lowcmd->motor_state()[i+6];
+          auto & motor_cmd = robot_bridge_->lowcmd->motor_cmd()[i+6];
           motor_cmd.mode() = msg->joint_cmd[i+6].mode;
           motor_cmd.q() = static_cast<double>(msg->joint_cmd[i+6].q);
           motor_cmd.dq() = static_cast<double>(msg->joint_cmd[i+6].dq);
           motor_cmd.tau() = static_cast<double>(msg->joint_cmd[i+6].tau);
-          motor_cmd.p_kp() = static_cast<double>(msg->joint_cmd[i+6].p_kp);
-          motor_cmd.p_kd() = static_cast<double>(msg->joint_cmd[i+6].p_kd);
-          motor_cmd.v_kp() = static_cast<double>(msg->joint_cmd[i+6].v_kp);
-          motor_cmd.v_kd() = static_cast<double>(msg->joint_cmd[i+6].v_kd);
+          motor_cmd.kp() = static_cast<double>(msg->joint_cmd[i+6].kp);
+          motor_cmd.kd() = static_cast<double>(msg->joint_cmd[i+6].kd);
         }
       }
     }
@@ -735,15 +743,13 @@ private:
       // std::lock_guard<std::mutex> lock(robot_bridge_->lowcmd->mutex_);
       for(size_t i = 0; i < 3; i++) {
         if(i < msg->joint_cmd.size()) {
-          auto & motor_cmd = robot_bridge_->lowcmd->motor_state()[i+8];
+          auto & motor_cmd = robot_bridge_->lowcmd->motor_cmd()[i+8];
           motor_cmd.mode() = msg->joint_cmd[i+8].mode;
           motor_cmd.q() = static_cast<double>(msg->joint_cmd[i+8].q);
           motor_cmd.dq() = static_cast<double>(msg->joint_cmd[i+8].dq);
           motor_cmd.tau() = static_cast<double>(msg->joint_cmd[i+8].tau);
-          motor_cmd.p_kp() = static_cast<double>(msg->joint_cmd[i+8].p_kp);
-          motor_cmd.p_kd() = static_cast<double>(msg->joint_cmd[i+8].p_kd);
-          motor_cmd.v_kp() = static_cast<double>(msg->joint_cmd[i+8].v_kp);
-          motor_cmd.v_kd() = static_cast<double>(msg->joint_cmd[i+8].v_kd);
+          motor_cmd.kp() = static_cast<double>(msg->joint_cmd[i+8].kp);
+          motor_cmd.kd() = static_cast<double>(msg->joint_cmd[i+8].kd);
         }
       }
     }
@@ -753,33 +759,32 @@ private:
   void AllMotorState_Publish() {
     if(data_exchange_running_) {
       // 更新 chassis 电机状态
-      auto chassis_msg = wheel_legged_msgs::msg::ChassisJointState();
-      for(size_t i = 0; i < chassis_msg.joint_state.size(); i++) {
-        chassis_msg.joint_state[i].mode = robot_bridge_->lowstate->motor_state()[i].mode();
-        chassis_msg.joint_state[i].q = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].q());
-        chassis_msg.joint_state[i].dq = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].dq());
-        chassis_msg.joint_state[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].tau_est());
-        chassis_msg.joint_state[i].tau_est = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].tau_est());
-      }chassis_motorState_publisher_->publish(chassis_msg);
+      auto chassis_msg = wheel_legged_msgs::msg::JointStates();
+      chassis_msg.joint_states.resize(6);
+      for(size_t i = 0; i < chassis_msg.joint_states.size(); i++) {
+        chassis_msg.joint_states[i].mode = robot_bridge_->lowstate->motor_state()[i].mode();
+        chassis_msg.joint_states[i].q = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].q());
+        chassis_msg.joint_states[i].dq = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].dq());
+        chassis_msg.joint_states[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i].tau());
+      }
+      chassis_motorState_publisher_->publish(chassis_msg);
 
       // 更新 gimbal 电机状态
       auto gimbal_msg = wheel_legged_msgs::msg::GimbalJointState();
-      for(size_t i = 0, j = chassis_msg.joint_state.size(); i < gimbal_msg.joint_state.size(); i++) {
+      for(size_t i = 0, j = gimbal_msg.joint_state.size(); i < gimbal_msg.joint_state.size(); i++) {
         gimbal_msg.joint_state[i].mode = robot_bridge_->lowstate->motor_state()[i+j].mode();
         gimbal_msg.joint_state[i].q = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].q());
         gimbal_msg.joint_state[i].dq = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].dq());
-        gimbal_msg.joint_state[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau_est());
-        gimbal_msg.joint_state[i].tau_est = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau_est());
+        gimbal_msg.joint_state[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau());
       }gimbal_motorState_publisher_->publish(gimbal_msg);
       
       // 更新 shoot 电机状态
       auto shoot_msg = wheel_legged_msgs::msg::ShootJointState();
-      for(size_t i = 0, j=chassis_msg.joint_state.size()+gimbal_msg.joint_state.size(); i < shoot_msg.joint_state.size(); i++) {
+      for(size_t i = 0, j=shoot_msg.joint_state.size()+gimbal_msg.joint_state.size(); i < shoot_msg.joint_state.size(); i++) {
         shoot_msg.joint_state[i].mode = robot_bridge_->lowstate->motor_state()[i+j].mode();
         shoot_msg.joint_state[i].q = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].q());
         shoot_msg.joint_state[i].dq = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].dq());
-        shoot_msg.joint_state[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau_est());
-        shoot_msg.joint_state[i].tau_est = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau_est());
+        shoot_msg.joint_state[i].tau = static_cast<float>(robot_bridge_->lowstate->motor_state()[i+j].tau());
       }shoot_motorState_publisher_->publish(shoot_msg);   
     }
   }
@@ -804,9 +809,8 @@ private:
   std::shared_ptr<RobotBridge> robot_bridge_;
   std::thread data_exchange_thread_;
   std::atomic<bool> data_exchange_running_;
-
-  rclcpp::Publisher<wheel_legged_msgs::msg::ChassisJointState>::SharedPtr chassis_motorState_publisher_;
-  rclcpp::Subscription<wheel_legged_msgs::msg::ChassisJointCmd>::SharedPtr chassis_motorCmd_subscriber_;
+  rclcpp::Publisher<wheel_legged_msgs::msg::JointStates>::SharedPtr chassis_motorState_publisher_;
+  rclcpp::Subscription<wheel_legged_msgs::msg::JointCmds>::SharedPtr chassis_motorCmd_subscriber_;
   rclcpp::Publisher<wheel_legged_msgs::msg::GimbalJointState>::SharedPtr gimbal_motorState_publisher_;
   rclcpp::Subscription<wheel_legged_msgs::msg::GimbalJointCmd>::SharedPtr gimbal_motorCmd_subscriber_;
   rclcpp::Publisher<wheel_legged_msgs::msg::ShootJointState>::SharedPtr shoot_motorState_publisher_;
