@@ -1,1 +1,0 @@
-DjiMotorCmd[3] motor_state

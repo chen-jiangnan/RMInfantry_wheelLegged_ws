@@ -15,54 +15,35 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 
 set(msg_files
-  # Common MSG
-  "msg/Common/Controller/PidControllerTrace.msg"
-  "msg/Common/Controller/LegControllerTrace.msg"
-  "msg/Common/Controller/LqrControllerTrace.msg"
-  "msg/Common/Controller/RotateControllerTrace.msg"
-  "msg/Common/Controller/StateEstimatorTrace.msg"
+  
 
-  "msg/Common/Obersver/KalmanFilterTrace.msg"
-  "msg/Common/Obersver/FnEstimatorTrace.msg"
-  "msg/Common/Obersver/XVEstimatorTrace.msg"
+  # High Level Control MSG
+  "msg/HighLevelControl/Common/Controller/PidControllerTrace.msg"
+  "msg/HighLevelControl/Common/Controller/LegControllerTrace.msg"
+  "msg/HighLevelControl/Common/Controller/LqrControllerTrace.msg"
+  "msg/HighLevelControl/Common/Controller/RotateControllerTrace.msg"
+  "msg/HighLevelControl/Common/Controller/StateEstimatorTrace.msg"
 
-  "msg/Common/Model/BodyWorldFrame.msg"
-  "msg/Common/Model/FiveLinkJointFrame.msg"
-  "msg/Common/Model/FiveLinkForceFrame.msg"
-  "msg/Common/Model/LegVmcJointFrame.msg"
-  "msg/Common/Model/LegVmcForceFrame.msg"
-  "msg/Common/Model/WheelLeggedRobotState.msg"
+  "msg/HighLevelControl/Common/Obersver/KalmanFilterTrace.msg"
+  "msg/HighLevelControl/Common/Obersver/FnEstimatorTrace.msg"
+  "msg/HighLevelControl/Common/Obersver/XVEstimatorTrace.msg"
 
+  "msg/HighLevelControl/Common/Model/BodyWorldFrame.msg"
+  "msg/HighLevelControl/Common/Model/FiveLinkJointFrame.msg"
+  "msg/HighLevelControl/Common/Model/FiveLinkForceFrame.msg"
+  "msg/HighLevelControl/Common/Model/LegVmcJointFrame.msg"
+  "msg/HighLevelControl/Common/Model/LegVmcForceFrame.msg"
+  "msg/HighLevelControl/Common/Model/WheelLeggedRobotState.msg"
 
-  # High Level Control MSG\
-  "msg/HighLevelControl/Sport/ChassisCtrl.msg"
-  "msg/HighLevelControl/Sport/ChassisState.msg"
+  "msg/HighLevelControl/ChassisCtrl.msg"
+  "msg/HighLevelControl/ChassisState.msg"
 
-  "msg/HighLevelControl/JointCmd.msg"
-  "msg/HighLevelControl/JointState.msg"
-  "msg/HighLevelControl/JointCmds.msg"
-  "msg/HighLevelControl/JointStates.msg"
-  "msg/HighLevelControl/ChassisJointCmd.msg"
-  "msg/HighLevelControl/ChassisJointState.msg"
-  "msg/HighLevelControl/GimbalJointCmd.msg"
-  "msg/HighLevelControl/GimbalJointState.msg"
-  "msg/HighLevelControl/ShootJointCmd.msg"
-  "msg/HighLevelControl/ShootJointState.msg"
   # Low Level Control MSG
-  "msg/LowLevelControl/DJI/DjiMotorCmd.msg"
-  "msg/LowLevelControl/DJI/DjiMotorState.msg"
-  "msg/LowLevelControl/KTECH/KtechMotorCmd.msg"
-  "msg/LowLevelControl/KTECH/KtechMotorState.msg"
-  "msg/LowLevelControl/Motorevo/MotorevoMotorCmd.msg"
-  "msg/LowLevelControl/Motorevo/MotorevoMotorState.msg"
 
-  "msg/LowLevelControl/ChassisMotorCmd.msg"
-  "msg/LowLevelControl/ChassisMotorState.msg"
-  "msg/LowLevelControl/GimbalMotorCmd.msg"
-  "msg/LowLevelControl/GimbalMotorState.msg"
-  "msg/LowLevelControl/ShootMotorCmd.msg"
-  "msg/LowLevelControl/ShootMotorState.msg"
-
+  "msg/LowLevelControl/JointCmd.msg"
+  "msg/LowLevelControl/JointState.msg"
+  "msg/LowLevelControl/JointCmds.msg"
+  "msg/LowLevelControl/JointStates.msg"
   "msg/LowLevelControl/IMUState.msg"
 )
 

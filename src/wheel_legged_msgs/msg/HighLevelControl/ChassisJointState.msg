@@ -1,1 +1,0 @@
-JointState[6] joint_state

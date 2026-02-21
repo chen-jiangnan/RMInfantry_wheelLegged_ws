@@ -6,7 +6,6 @@ uint8 MODE_EFFORT = 3            #力矩控制
 uint8 MODE_MIT = 4               #MIT控制
 uint8 MODE_SET_ZERO = 10         #零点设置
 
-string name     # 关节名称
 uint8 mode      # 关节模式
 
 # 设定值

@@ -1,1 +1,0 @@
-JointCmd[3] joint_cmd

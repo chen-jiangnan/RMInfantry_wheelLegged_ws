@@ -5,7 +5,6 @@ uint8 MODE_VELOCITY = 2          #速度控制
 uint8 MODE_EFFORT = 3            #力矩控制
 uint8 MODE_MIT = 4               #力矩控制
 
-string name   # 关节名称
 uint8 mode      # 关节模式
 
 # 关节状态
