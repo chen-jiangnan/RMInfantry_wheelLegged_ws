@@ -3,122 +3,169 @@
 #include <cstddef>
 #include <iostream>
 #include <ostream>
+#include <wheel_legged_msgs/msg/detail/joint_cmds__struct.hpp>
 #include "dm_motor.hpp"
 #include "dji_motor.hpp"
+#include "hipnuc_imu.hpp"
+#include "wheel_legged_interfaces/imu_state_interface.hpp"
+#include "wheel_legged_interfaces/joint_state_interface.hpp"
+#include "wheel_legged_interfaces/joint_cmd_interface.hpp"
 
 
-void canSentCallback(usb_rx_frame_t* frame){
-  printf("can sent callback , packet id:%x\n",frame->head.can_id);
-  // switch (condition) {
-  // cases
-  // }
+using namespace wheel_legged_interfaces;
+using namespace hipnuc_imu;
+using namespace dm_tools;
+using namespace dm_motor;
+using namespace dji_motor;
 
-}
-void canRecvCallback(usb_rx_frame_t* frame){
-  printf("can recv callback , packet id:%x\n",frame->head.can_id);
-}
+DMTools* DMTools::instance_ = nullptr;
+
 
 class HardwareBrigeNode : public rclcpp::Node{
 public:
 HardwareBrigeNode(std::string name):Node(name){
     RCLCPP_INFO(this->get_logger(), "%s节点已启动.", name.c_str());
-    // ==================== 创建USB2FDCAN工具 ====================
-    //初始化模块句柄
-    dm_tools_ = damiao_handle_create(DEV_USB2CANFD);
-    RCLCPP_INFO(this->get_logger(), "初始化 usb2fdcan 设备...");
 
-    //打印sdk版本信息
-    int device_cnt = damiao_handle_find_devices(dm_tools_);
-    if (device_cnt == 0) { 
-      RCLCPP_ERROR(this->get_logger(), "未发现 usb2fdcan 设备! ! !");
-      throw std::runtime_error("usb2fdcan 设备初始化失败");
+    // ==================== 参数声明 ====================
+    this->declare_parameter("imu_port", "/dev/ttyIMU");
+    this->declare_parameter("imu_baudrate", 921600);
+
+    auto imu_port = this->get_parameter("imu_port").as_string();
+    auto imu_baud = this->get_parameter("imu_baudrate").as_int();
+
+
+    // ==================== 初始化DMTools ================
+    dm_tools_ = std::make_unique<DMTools>(DEV_USB2CANFD);
+    dm_tools_->openChannel();
+
+
+    // ==================== 初始化IMU ====================
+    imu_ = std::make_unique<HipnucImu>(imu_port, imu_baud);
+    if (!imu_->init()) {
+      RCLCPP_ERROR(this->get_logger(), "IMU初始化失败: %s", 
+          imu_->getLastError().c_str());
+      throw std::runtime_error("IMU初始化失败");
     }
 
-    //查找对应类型模块的设备数量
-    int handle_cnt = 0;
-    damiao_handle_get_devices(dm_tools_, dev_list_, &handle_cnt);
+    // ==================== 初始化电机 ====================
+    wheel_motor_group_ = std::make_unique<MotorGroupSender>(*dm_tools_, 0, 0x200);
+    wheel_motors_.push_back(std::make_shared<M3508Motor>(0x01, *wheel_motor_group_, *dm_tools_, 268.0/17.0, true));
+    wheel_motors_.push_back(std::make_shared<M3508Motor>(0x02, *wheel_motor_group_, *dm_tools_, 268.0/17.0, true));
+    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x01, 0x11, *dm_tools_, DM8009, MIT_MODE));
+    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x02, 0x12, *dm_tools_, DM8009, MIT_MODE));
+    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x03, 0x13, *dm_tools_, DM8009, MIT_MODE));
+    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x04, 0x14, *dm_tools_, DM8009, MIT_MODE));
+    for(int i = 0; i < 4; i++){
+      hip_motors_[i]->enable();
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    // 注册IMU回调
+    imu_->setDataCallback([this](const HipnucData& data) {
+        this->imuStatePubCallback(data);
+    });
+  
+    imu_->start();
+    RCLCPP_INFO(this->get_logger(), "IMU已启动");
+
     
-    //打开设备
-    if (device_open(dev_list_[0])) {
-      RCLCPP_INFO(this->get_logger(), "usb2fdcan 设备已开启");
-    }else{
-      RCLCPP_ERROR(this->get_logger(), "usb2fdcan 设备开启失败! ! !");
-      throw std::runtime_error("usb2fdcan 设备初始化失败");
-    }
+    // ============= 创建 low level control接口 ==============
+    chassis_joints_state_ = std::make_unique<JointStateInterface>(6, JointStateInterface::MODE_IDLE);
+    chassis_joints_cmd_ = std::make_unique<JointCmdInterface>(6, JointCmdInterface::MODE_IDLE);
 
-    //获取设备信息
-    char buf[255];
-    device_get_version(dev_list_[0], buf, sizeof(buf));
-    RCLCPP_INFO(this->get_logger(), "device version:%s", buf);
+    // ==================== ROS2发布/订阅 ====================
+    imu_state_pub_ = this->create_publisher<wheel_legged_msgs::msg::IMUState>(
+      "lowlevel/imuState", 10);
+    chassis_joints_cmd_sub_ = this->create_subscription<wheel_legged_msgs::msg::JointCmds>(
+      "lowlevel/chassisJointCmd", 10, std::bind(&HardwareBrigeNode::chassisJointCmdSubCallback, this, std::placeholders::_1));     
+    chassis_joints_state_pub_ = this->create_publisher<wheel_legged_msgs::msg::JointStates>(
+      "lowlevel/chassisJointState", 10);
 
-    device_get_serial_number(dev_list_[0], buf, sizeof(buf));
-    RCLCPP_INFO(this->get_logger(), "device sn:%s", buf);
-
-    //设置通道波特率
-    device_channel_set_baud_with_sp(dev_list_[0], 0, false, 1000000, 1000000, 0.75f, 0.75f);
-    device_baud_t baud;
-    //获取通道波特率
-    if (device_channel_get_baudrate(dev_list_[0], 0, &baud))
-    {
-      RCLCPP_INFO(this->get_logger(), "=== CAN channel baudrate info ===");
-      RCLCPP_INFO(this->get_logger(), "can_baud: %d", baud.can_baudrate);
-      RCLCPP_INFO(this->get_logger(), "canfd_baud: %d", baud.canfd_baudrate);
-      RCLCPP_INFO(this->get_logger(), "can_sp: %.6f", baud.can_sp);
-      RCLCPP_INFO(this->get_logger(), "canfd_sp: %.6f", baud.canfd_sp);
-    }
-    //开启can通道
-    auto test = device_open_channel(dev_list_[0], 0);
-    if(!test){
-      RCLCPP_ERROR(this->get_logger(), "usb2fdcan 设备开启失败! ! !");
-    }
-
-    //发送钩子函数注册
-    device_hook_to_sent(dev_list_[0], canSentCallback);
-    //接收钩子函数注册
-    device_hook_to_rec(dev_list_[0], canRecvCallback);
-
-    // ==================== 创建电机 ====================
-    hip_motors_.emplace_back(0x01, 0x01 + 0x10, dev_list_[0], damiao::DM8009, damiao::MIT_MODE);
-    hip_motors_.emplace_back(0x02, 0x02 + 0x10, dev_list_[0], damiao::DM8009, damiao::MIT_MODE);
-    hip_motors_.emplace_back(0x03, 0x03 + 0x10, dev_list_[0], damiao::DM8009, damiao::MIT_MODE);
-    hip_motors_.emplace_back(0x04, 0x04 + 0x10, dev_list_[0], damiao::DM8009, damiao::MIT_MODE);
-    for(int i = 0; i < 4; i++){ 
-      hip_motors_[i].enable();
-      std::this_thread::sleep_for(std::chrono::microseconds(200));
-    }
-    wheel_motors_.emplace_back(0x01, 0x02, dev_list_[0]);
+    // ==================== 创建定时器 ====================
+    chassis_timer_ = this->create_wall_timer(
+      std::chrono::milliseconds(1),  std::bind(&HardwareBrigeNode::chassisJointStatePubCallback, this));
 
     // ==================== 创建控制线程 ====================
-    control_thread_ = std::thread(&HardwareBrigeNode::controlLoop, this);
+    control_thread_ = std::thread(&HardwareBrigeNode::motorControlLoop, this);
    }
 
-~HardwareBrigeNode() {
-    for(int i = 0; i < 4; i++){
-      hip_motors_[i].disable();
-      std::this_thread::sleep_for(std::chrono::microseconds(200));
+   ~HardwareBrigeNode() {
+    if (control_thread_.joinable()) {
+      control_thread_.join();
     }
-    wheel_motors_[0].disable();
-    device_hook_to_sent(dev_list_[0], NULL);
-    device_hook_to_rec(dev_list_[0], NULL);
-    device_close_channel(dev_list_[0],0); //关闭can通道
-    device_close(dev_list_[0]);          //关闭设备
-    damiao_handle_destroy(dm_tools_);   //销毁模块句柄
+    for(int i = 0; i < 4; i++){
+      hip_motors_[i]->disable();
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    if (imu_) { imu_->stop();}
+    dm_tools_->closeChannel();
   }
 private:
 
-  void controlLoop(){
+  void imuStatePubCallback(const HipnucData& data){
+      // 发布自定义IMU状态（给控制器用）
+    if(imu_state_pub_ != nullptr){
+      auto msg = wheel_legged_msgs::msg::IMUState();
+    
+      msg.header.stamp = this->now();
+      msg.header.frame_id = "base_link";
+  
+      msg.quaternion[0] = data.quat[0]; // w x y z
+      msg.quaternion[1] = data.quat[1]; // w x y z
+      msg.quaternion[2] = data.quat[2]; // w x y z
+      msg.quaternion[3] = data.quat[3]; // w x y z
+  
+      msg.gyroscope[0] = data.gyro[0]; 
+      msg.gyroscope[1] = data.gyro[1];
+      msg.gyroscope[2] = data.gyro[2];
+  
+      msg.accelerometer[0] = data.gyro[0]; 
+      msg.accelerometer[1] = data.gyro[1];
+      msg.accelerometer[2] = data.gyro[2];
+  
+      msg.rpy[0] = data.rpy[0];
+      msg.rpy[1] = data.rpy[1];
+      msg.rpy[2] = data.rpy[2];
+      imu_state_pub_->publish(msg);
+    }
+  }
+
+  void chassisJointStatePubCallback(){
+    auto msgs = chassis_joints_state_->toMsgs();
+    chassis_joints_state_pub_->publish(msgs);
+  }
+  void chassisJointCmdSubCallback(const wheel_legged_msgs::msg::JointCmds& msgs){
+    chassis_joints_cmd_->fromMsgs(msgs);
+  }
+
+  void motorControlLoop(){
 
     while(rclcpp::ok()){
-      wheel_motors_[0].controlForce(1, 1);
+      wheel_motors_[0]->setTorque(0.1);
+      wheel_motors_[1]->setTorque(0.1);
+      wheel_motor_group_->send();
       std::this_thread::sleep_for(std::chrono::microseconds(2000));
     }
   }
-  /*USB2FDCAN tools*/
-  damiao_handle* dm_tools_;
-  device_handle* dev_list_[16];
-  /*chassis motor*/
-  std::vector<damiao::DamiaoMotor> hip_motors_;
-  std::vector<dji::WheelMotors> wheel_motors_;
+
+  // ==================== 成员变量 ====================
+  std::unique_ptr<DMTools> dm_tools_;
+  std::unique_ptr<HipnucImu> imu_;
+  std::unique_ptr<MotorGroupSender> wheel_motor_group_;
+  std::vector<std::shared_ptr<M3508Motor>>  wheel_motors_;
+  std::vector<std::shared_ptr<DamiaoMotor>> hip_motors_;
+  // std::vector<dji::WheelMotors> wheel_motors_;
+
+  // std::unique_ptr<IMUStateInterface> imu_state_;
+  std::unique_ptr<JointStateInterface> chassis_joints_state_;
+  std::unique_ptr<JointCmdInterface> chassis_joints_cmd_;
+
+  // ROS2
+  rclcpp::Publisher<wheel_legged_msgs::msg::IMUState>::SharedPtr imu_state_pub_;
+  rclcpp::Publisher<wheel_legged_msgs::msg::JointStates>::SharedPtr chassis_joints_state_pub_;
+  rclcpp::Subscription<wheel_legged_msgs::msg::JointCmds>::SharedPtr chassis_joints_cmd_sub_;
+  rclcpp::TimerBase::SharedPtr chassis_timer_;
 
   /*控制线程*/
   std::thread control_thread_;
