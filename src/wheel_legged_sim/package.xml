@@ -11,6 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>wheel_legged_msgs</depend>
+  <depend>wheel_legged_interfaces</depend>
   <depend>sensor_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>

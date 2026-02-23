@@ -1,236 +1,123 @@
-# pragma once
+#pragma once
 
 #include <cmath>
 #include <cstdint>
-#include <mutex> 
+#include <mutex>
+#include <atomic>
+#include <array>
 
-class Quaternion
-{
-public:
-    Quaternion(){}
-    double* quaternion(){ return quaternion_; }
-private:
-    double quaternion_[4];
-};
+/* ================================================================
+ *  SimMotorCmd：单电机指令（替代 MotorCmd_t）
+ *  SimMotorState：单电机状态（替代 MotorState_t）
+ *
+ *  使用 std::atomic<double> 保证无锁线程安全：
+ *   - ROS 回调线程写 cmd
+ *   - MuJoCo 物理线程读 cmd / 写 state
+ *   - ROS timer 线程读 state
+ * ================================================================ */
 
-class RPY
-{
-public:
-    RPY(){}
-    double* rpy(){ return rpy_; }
-private:
-    double rpy_[3];
-};
+// static constexpr int kNumChassisMotors = 6;
+// static constexpr int kNumGimbalMotors  = 2;
+// static constexpr int kNumShootMotors   = 3;
+// static constexpr int kNumMotors        = kNumChassisMotors + kNumGimbalMotors + kNumShootMotors;
+// kNumMotors 由 RobotBridge 从 m->nu 读取
+static constexpr int kMaxMotors = 16;  // 上限，用于数组大
 
-class Gyroscope
-{
-public:
-    Gyroscope(){}
-    double* gyroscope(){ return gyroscope_; }
-private:
-    double gyroscope_[3];
-};
+struct SimMotorCmd {
+    std::atomic<uint8_t> mode{0};
+    std::atomic<double>  q{0.0};
+    std::atomic<double>  dq{0.0};
+    std::atomic<double>  tau{0.0};
+    std::atomic<double>  kp{0.0};
+    std::atomic<double>  kd{0.0};
 
-class Accelerometer
-{
-public:
-    Accelerometer(){}
-    double* accelerometer(){ return accelerometer_; }
-private:
-    double accelerometer_[3];
-};
-
-class IMUState_t 
-{
-public:
-    IMUState_t() {
-        // 初始化所有数据为0
-        for(int i = 0; i < 4; i++) quaternion_[i] = 0.0;
-        for(int i = 0; i < 3; i++) {
-            rpy_[i] = 0.0;
-            gyroscope_[i] = 0.0;
-            accelerometer_[i] = 0.0;
-        }
+    // atomic 不可拷贝，提供显式赋值
+    void set(uint8_t m, double q_, double dq_, double tau_, double kp_, double kd_) {
+        mode.store(m,   std::memory_order_relaxed);
+        q.store(q_,     std::memory_order_relaxed);
+        dq.store(dq_,   std::memory_order_relaxed);
+        tau.store(tau_, std::memory_order_relaxed);
+        kp.store(kp_,   std::memory_order_relaxed);
+        kd.store(kd_,   std::memory_order_relaxed);
     }
-    
-    // 获取四元数数据指针
-    double* quaternion() { return quaternion_; }
-    
-    // 获取RPY数据指针
-    double* rpy() { return rpy_; }
-    
-    // 获取陀螺仪数据指针
-    double* gyroscope() { return gyroscope_; }
-    
-    // 获取加速度计数据指针
-    double* accelerometer() { return accelerometer_; }
-    
-    // 从MuJoCo传感器数据更新IMU状态
-    // quat_adr: 四元数传感器地址，如果<0则跳过
-    // gyro_adr: 陀螺仪传感器地址，如果<0则跳过
-    // acc_adr: 加速度计传感器地址，如果<0则跳过
-    // sensordata: MuJoCo传感器数据数组
-    void updateFromMuJoCo(int quat_adr, int gyro_adr, int acc_adr, const double* sensordata) {
-        // 更新四元数
-        if(quat_adr >= 0) {
-            quaternion_[0] = sensordata[quat_adr + 0];
-            quaternion_[1] = sensordata[quat_adr + 1];
-            quaternion_[2] = sensordata[quat_adr + 2];
-            quaternion_[3] = sensordata[quat_adr + 3];
-            
-            // 从四元数计算RPY
-            double w = quaternion_[0];
-            double x = quaternion_[1];
-            double y = quaternion_[2];
-            double z = quaternion_[3];
-            
-            rpy_[0] = atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
-            rpy_[1] = asin(2 * (w * y - z * x));
-            rpy_[2] = atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
-        }
-        
-        // 更新陀螺仪数据
-        if(gyro_adr >= 0) {
-            gyroscope_[0] = sensordata[gyro_adr + 0];
-            gyroscope_[1] = sensordata[gyro_adr + 1];
-            gyroscope_[2] = sensordata[gyro_adr + 2];
-        }
-        
-        // 更新加速度计数据
-        if(acc_adr >= 0) {
-            accelerometer_[0] = sensordata[acc_adr + 0];
-            accelerometer_[1] = sensordata[acc_adr + 1];
-            accelerometer_[2] = sensordata[acc_adr + 2];
-        }
-    }
-    
-private:
-    double quaternion_[4];      // 四元数 [w, x, y, z]
-    double rpy_[3];             // 欧拉角 [roll, pitch, yaw]
-    double gyroscope_[3];       // 陀螺仪 [x, y, z]
-    double accelerometer_[3];   // 加速度计 [x, y, z]
 };
 
+struct SimMotorState {
+    std::atomic<uint8_t> mode{0};
+    std::atomic<double>  q{0.0};
+    std::atomic<double>  dq{0.0};
+    std::atomic<double>  tau{0.0};
 
-
-class MotorCmd_t
-{
-public:
-    MotorCmd_t() : mode_(0), q_(0), dq_(0), tau_(0), kp_(0), kd_(0) {}
-    
-    uint8_t& mode() { return mode_; }
-    double& q() { return q_; }
-    double& dq() { return dq_; }
-    double& tau() { return tau_; }
-    double& kp() { return kp_; }
-    double& kd() { return kd_; }
-    
-private:
-    uint8_t mode_;
-    double q_;
-    double dq_;
-    double tau_;
-    double kp_;
-    double kd_;
+    void set(double q_, double dq_, double tau_) {
+        q.store(q_,     std::memory_order_relaxed);
+        dq.store(dq_,   std::memory_order_relaxed);
+        tau.store(tau_, std::memory_order_relaxed);
+    }
 };
 
-class MotorState_t
-{
-public:
-    MotorState_t() : mode_(0), q_(0), dq_(0), tau_(0) {}
-    
-    uint8_t& mode() { return mode_; }
-    double& q() { return q_; }
-    double& dq() { return dq_; }
-    double& tau() { return tau_; }
-    
-private:
-    uint8_t mode_;
-    double q_;
-    double dq_;
-    double tau_;
-};
+/* ================================================================
+ *  SimIMUState：IMU 状态（线程安全读写）
+ * ================================================================ */
+struct SimIMUState {
+    std::mutex mtx;
+    double quaternion[4]    = {1, 0, 0, 0};
+    double rpy[3]           = {0, 0, 0};
+    double gyroscope[3]     = {0, 0, 0};
+    double accelerometer[3] = {0, 0, 0};
 
-class LowState_t
-{
-public:
-    LowState_t() : locked_(false) {}
-    
-    MotorState_t* motor_state(){return motor_state_;}
-    IMUState_t* chassis_imu_state(){return imu_state_;}
-    IMUState_t* gimbal_imu_state(){return &imu_state_[1];}
-    
-    // 尝试获取锁（非阻塞）
-    bool trylock() {
-        if (mutex_.try_lock()) {
-            locked_ = true;
-            return true;
+    void updateFromMuJoCo(int quat_adr, int gyro_adr, int acc_adr,
+                          const double* sensordata)
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+
+        if (quat_adr >= 0) {
+            for (int i = 0; i < 4; ++i)
+                quaternion[i] = sensordata[quat_adr + i];
+
+            double w = quaternion[0], x = quaternion[1],
+                   y = quaternion[2], z = quaternion[3];
+            rpy[0] = atan2(2*(w*x + y*z), 1 - 2*(x*x + y*y));
+            rpy[1] = asin (2*(w*y - z*x));
+            rpy[2] = atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z));
         }
-        return false;
-    }
-    
-    // 解锁并发布（这里只是解锁，实际发布在ROS2节点中完成）
-    void unlock() {
-        if (locked_) {
-            mutex_.unlock();
-            locked_ = false;
-        }
-    }
-    int iflocked(){
-        if(locked_ == true){
-            return 1;
-        }else{
-            return 0;
-        }
+        if (gyro_adr >= 0)
+            for (int i = 0; i < 3; ++i) gyroscope[i]     = sensordata[gyro_adr + i];
+        if (acc_adr >= 0)
+            for (int i = 0; i < 3; ++i) accelerometer[i] = sensordata[acc_adr  + i];
     }
 
-private:
-    std::mutex mutex_;
-    bool locked_;
-    MotorState_t motor_state_[11];
-    IMUState_t imu_state_[2];
-};
-
-class LowCmd_t
-{
-public:
-    LowCmd_t(){}
-    MotorCmd_t* motor_cmd(){return motor_cmd_;}
-    
-    // 互斥锁，用于保护多线程访问
-    std::mutex mutex_;
-    
-private:
-    MotorCmd_t motor_cmd_[11];
-};
-
-class HighState_t
-{
-public:
-    HighState_t(){}
-    double* position(){return position_;}
-    double* velocity(){return velocity_;}
-    // 尝试获取锁（非阻塞）
-    bool trylock() {
-        if (mutex_.try_lock()) {
-            locked_ = true;
-            return true;
-        }
-        return false;
-    }
-    
-    // 解锁并发布（这里只是解锁，实际发布在ROS2节点中完成）
-    void unlock() {
-        if (locked_) {
-            mutex_.unlock();
-            locked_ = false;
+    // 读取时加锁拷贝
+    void read(double out_quat[4], double out_gyro[3],
+              double out_acc[3],  double out_rpy[3]) const
+    {
+        std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(mtx));
+        for (int i = 0; i < 4; ++i) out_quat[i] = quaternion[i];
+        for (int i = 0; i < 3; ++i) {
+            out_gyro[i] = gyroscope[i];
+            out_acc[i]  = accelerometer[i];
+            out_rpy[i]  = rpy[i];
         }
     }
+};
 
-private:
-    double position_[3];
-    double velocity_[3];
-    // 互斥锁，用于保护多线程访问
-    std::mutex mutex_;
-    bool locked_;
+/* ================================================================
+ *  SimSharedData：所有线程共享的仿真数据
+ *
+ *  电机 cmd/state 用 atomic 无锁
+ *  IMU 用 mutex（数据量大，原子操作不合适）
+ * ================================================================ */
+struct SimSharedData {
+    SimMotorCmd   motor_cmd[kMaxMotors];
+    SimMotorState motor_state[kMaxMotors];
+    SimIMUState   chassis_imu;
+    SimIMUState   gimbal_imu;
+
+    std::atomic<int> num_motors{0};        // 实际电机数，由 RobotBridge 设置
+    std::atomic<int> num_chassis{0};
+    std::atomic<int> num_gimbal{0};
+    std::atomic<int> num_shoot{0};
+
+    // 位置速度（底盘）
+    std::atomic<double> pos_x{0}, pos_y{0}, pos_z{0};
+    std::atomic<double> vel_x{0}, vel_y{0}, vel_z{0};
 };

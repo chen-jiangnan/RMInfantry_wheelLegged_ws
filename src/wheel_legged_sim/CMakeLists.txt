@@ -9,98 +9,91 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
+# ── 依赖 ──
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(ament_index_cpp REQUIRED)
 find_package(Threads REQUIRED)
-find_package(mujoco REQUIRED)
 find_package(glfw3 REQUIRED)
-find_package(yaml-cpp REQUIRED)
 find_package(fmt REQUIRED)
 find_package(wheel_legged_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
+find_package(wheel_legged_interfaces REQUIRED)  # ← 新增，移除 yaml-cpp / boost
 
-# 构建可执行文件
+# ── MuJoCo simulate 源文件 ──
 file(GLOB SIM_SRC
-  # exclude mujoco/simulate/main.cc
   mujoco/simulate/glfw_*.cc
   mujoco/simulate/platform_*.cc
   mujoco/simulate/simulate.cc
   src/lodepng/lodepng.cpp
 )
 
-add_executable(mujoco_sim 
+# ── 可执行文件（两个 cpp 编译到同一目标）──
+add_executable(mujoco_sim
   ${SIM_SRC}
-  src/mujoco_sim.cpp
-  # src/robot_sdk_bridge.cpp
+  src/mujoco_sim.cpp              # MuJoCo 生命周期 + PhysicsLoop，定义全局变量
+  src/simulation_brige_node.cpp   # ROS2 通信 + main()，extern 引用全局变量
 )
 
-# 添加路径
+# ── include 路径 ──
 target_include_directories(mujoco_sim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mujoco/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mujoco/simulate>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng>
-  $<INSTALL_INTERFACE:include>)
-
-# 链接ros2依赖
-ament_target_dependencies(mujoco_sim
-  "rclcpp"
-  "ament_index_cpp"
-  "wheel_legged_msgs"
-  "sensor_msgs"
+  $<INSTALL_INTERFACE:include>
 )
 
-# 定义宏
+# ── ROS2 ament 依赖 ──
+ament_target_dependencies(mujoco_sim
+  rclcpp
+  ament_index_cpp
+  wheel_legged_msgs
+  wheel_legged_interfaces  # ← 新增
+)
+
+# ── 自定义库目标链接 ──
+target_link_libraries(mujoco_sim
+  wheel_legged_interfaces::wheel_legged_interfaces  # ← 新增
+  pthread
+  ${CMAKE_CURRENT_SOURCE_DIR}/mujoco/lib/libmujoco.so
+  glfw
+  fmt
+  # yaml-cpp      ← 移除，改用 ROS2 参数
+  # boost_program_options  ← 移除，改用 ROS2 参数
+)
+
+# ── 宏定义 ──
 target_compile_definitions(mujoco_sim PUBLIC
   PACKAGE_NAME="${PROJECT_NAME}"
 )
 
-# 链接第三方依赖
-target_link_libraries(mujoco_sim 
-  pthread 
-  ${CMAKE_CURRENT_SOURCE_DIR}/mujoco/lib/libmujoco.so 
-  glfw 
-  yaml-cpp 
-  fmt 
-  boost_program_options
-)
-
-# 使安装后的可执行文件运行时能找到库和插件
+# ── RPATH（运行时找到 libmujoco.so 和插件）──
 set_target_properties(mujoco_sim PROPERTIES
-  BUILD_RPATH "$ORIGIN/mujoco;$ORIGIN/mujoco_plugin"
+  BUILD_RPATH   "$ORIGIN/mujoco;$ORIGIN/mujoco_plugin"
   INSTALL_RPATH "$ORIGIN/mujoco;$ORIGIN/mujoco_plugin"
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 
-# 安装可执行文件
+# ── 安装 ──
 install(TARGETS mujoco_sim
-  DESTINATION lib/${PROJECT_NAME})
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-# 安装MuJoCo 动态库
 install(DIRECTORY mujoco/lib/
-DESTINATION lib/${PROJECT_NAME}/mujoco)
+  DESTINATION lib/${PROJECT_NAME}/mujoco
+)
 
-# 安装MuJoCo plugin
 install(DIRECTORY mujoco/bin/mujoco_plugin/
   DESTINATION lib/${PROJECT_NAME}/mujoco_plugin
-  FILES_MATCHING PATTERN "*.so")
-
-# 安装配置文件
-install(
-  FILES config.yaml
-  DESTINATION share/${PROJECT_NAME}
+  FILES_MATCHING PATTERN "*.so"
 )
+
+# config.yaml 不再需要安装，改由 launch 文件的 parameters 维护
+# install(FILES config.yaml DESTINATION share/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
