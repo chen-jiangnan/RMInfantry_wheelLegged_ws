@@ -9,6 +9,7 @@
 #include <array>
 #include <vector>
 #include <string>
+#include <iostream>
 #include "wheel_legged_msgs/msg/imu_state.hpp"
 
 namespace wheel_legged_interfaces {
@@ -48,6 +49,29 @@ public:
     const std::array<float, 3>& getGyroscope() const { return gyroscope_; }
     const std::array<float, 3>& getAccelerometer() const { return accelerometer_; }
     const std::array<float, 3>& getRPY() const { return rpy_; }
+
+    void print() const {
+        std::cout << std::fixed << std::setprecision(4);
+        std::cout << "\n========== IMUState ==========\n";
+        std::cout << "  Quaternion  : ["
+                  << std::setw(9) << quaternion_[0] << ", "
+                  << std::setw(9) << quaternion_[1] << ", "
+                  << std::setw(9) << quaternion_[2] << ", "
+                  << std::setw(9) << quaternion_[3] << "]\n";
+        std::cout << "  RPY         : ["
+                  << std::setw(9) << rpy_[0] << ", "
+                  << std::setw(9) << rpy_[1] << ", "
+                  << std::setw(9) << rpy_[2] << "] rad\n";
+        std::cout << "  Gyroscope   : ["
+                  << std::setw(9) << gyroscope_[0] << ", "
+                  << std::setw(9) << gyroscope_[1] << ", "
+                  << std::setw(9) << gyroscope_[2] << "] rad/s\n";
+        std::cout << "  Accelero    : ["
+                  << std::setw(9) << accelerometer_[0] << ", "
+                  << std::setw(9) << accelerometer_[1] << ", "
+                  << std::setw(9) << accelerometer_[2] << "] m/s²\n";
+        std::cout << "==============================\n";
+    }
 
     // ==================== 转换方法 ====================
     msg_IMUState toMsg() const { 

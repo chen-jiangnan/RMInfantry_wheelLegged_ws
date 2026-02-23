@@ -143,33 +143,35 @@ void JointStateInterface::fromMsgs(const JointStateInterface::msg_JointStates& m
 }
 
 void JointStateInterface::print() const {
-    std::cout << "\n========== JointState ==========\n";
-    std::cout << std::fixed << std::setprecision(3);
-    
-    const char* mode_names[] = {
-        "IDLE", "POSITION", "VELOCITY", "EFFORT", "MIT"
+    std::cout << std::fixed << std::setprecision(4);
+    std::cout << "\n========== JointState (" << modes_.size() << " joints) ==========\n";
+    std::cout << std::setw(4)  << "idx"
+              << std::setw(10) << "mode"
+              << std::setw(10) << "pos"
+              << std::setw(10) << "vel"
+              << std::setw(10) << "eff" << "\n";
+    std::cout << std::string(44, '-') << "\n";
+
+    auto modeStr = [](Mode m) -> std::string {
+        switch (m) {
+            case MODE_IDLE:     return "IDLE";
+            case MODE_POSITION: return "POS";
+            case MODE_VELOCITY: return "VEL";
+            case MODE_EFFORT:   return "EFF";
+            case MODE_MIT:      return "MIT";
+            default:            return "?";
+        }
     };
-    
+
     for (size_t i = 0; i < modes_.size(); ++i) {
-        std::cout << "[" << i << "] ";
-        if (i < modes_.size()) {
-            std::cout << modes_[i] << ": ";
-        }
-        
-        std::cout << "mode=" << mode_names[static_cast<int>(modes_[i])];
-        
-        if (i < positions_.size()) {
-            std::cout << " q=" << positions_[i];
-        }
-        if (i < velocities_.size()) {
-            std::cout << " dq=" << velocities_[i];
-        }
-        if (i < efforts_.size()) {
-            std::cout << " tau=" << efforts_[i];
-        }
-        std::cout << "\n";
+        std::cout << std::setw(4)  << i
+                  << std::setw(10) << modeStr(modes_[i])
+                  << std::setw(10) << (i < positions_.size()  ? positions_[i]  : 0.f)
+                  << std::setw(10) << (i < velocities_.size() ? velocities_[i] : 0.f)
+                  << std::setw(10) << (i < efforts_.size()    ? efforts_[i]    : 0.f)
+                  << "\n";
     }
-    std::cout << "==============================\n";
+    std::cout << "==============================================\n";
 }
 
 
