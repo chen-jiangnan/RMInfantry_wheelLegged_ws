@@ -180,6 +180,10 @@ public:
         }
         roll_compensation_.clear();
         phi0_compensation_.clear();
+        gravity_compensation_.fill(0.0f);
+        feedforward_fs_.fill(0.0f);
+        tp_.fill(0.0f);
+        f_.fill(0.0f);
     }
     
     /**
@@ -218,10 +222,10 @@ private:
     std::array<PIDController, 2> spring_damping_;   // 左右腿弹簧阻尼
     PIDController roll_compensation_;               // Roll补偿
     PIDController phi0_compensation_;               // Phi0补偿
-    std::array<float, 2> gravity_compensation_;     // 抵消机体自重的力源
-    std::array<float, 2> feedforward_fs_;           // 机体跳跃的额外力源
-    std::array<float, 2> tp_;                       // 补偿力矩
-    std::array<float, 2> f_;                        // 总输出
+    std::array<float, 2> gravity_compensation_{};     // 抵消机体自重的力源
+    std::array<float, 2> feedforward_fs_{};           // 机体跳跃的额外力源
+    std::array<float, 2> tp_{};                       // 补偿力矩
+    std::array<float, 2> f_{};                        // 总输出
 
 };
 

@@ -46,12 +46,8 @@ public:
         std::array<std::array<float, PolyOrder>, ControlSize * StateSize> fit_coeffs;
         
         Config() {
-            for(size_t index = 0; index < 2; index++){
-                K[index].setZero();
-                for (auto& coeff : fit_coeffs) {
-                    coeff.fill(0.0f);
-                }
-            }
+            for (auto& k : K) k.setZero();
+            for (auto& coeff : fit_coeffs) coeff.fill(0.0f);
         }
         
         // 从数组设置K矩阵
@@ -78,13 +74,15 @@ public:
     /**
     * @brief 构造函数
     */
-    LQRController() = default;
+    LQRController(){clear();};
     
     /**
     * @brief 带配置的构造函数
     */
     explicit LQRController(const Config& config) 
-        : config_(config) {}
+        : config_(config) {
+            clear();
+        }
     
     /**
     * @brief 设置配置
@@ -171,6 +169,20 @@ public:
             }
         }
     }
+
+    /**
+    * @brief 重置控制器内部状态
+    * 清空状态/误差/控制量历史，config_ 和 K 矩阵保留不变
+    */
+    void clear() {
+        for (size_t i = 0; i < 2; ++i) {
+            X_[i].setZero();
+            Xd_[i].setZero();
+            Err_[i].setZero();
+            U_[i].setZero();
+        }
+    }
+    
     /**
     * @brief 设置当前增益矩阵
     */
