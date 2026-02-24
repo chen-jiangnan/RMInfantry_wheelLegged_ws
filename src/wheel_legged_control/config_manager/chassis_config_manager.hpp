@@ -13,6 +13,7 @@
 #include "Controller/RotateController.hpp"
 #include "Controller/StateEstimator.hpp"
 #include "Model/WheelLeggedRobot.hpp"
+#include "joint_fsm.hpp"
 
 namespace config_manager {
 
@@ -28,16 +29,18 @@ namespace config_manager {
 */
 class ChassisConfigManager : public BaseConfigManager {
 public:
+
     /**
     * @brief 控制器参数集合
     * 
     * 直接使用各控制器的Config类型
     */
     struct ControllerParams {
-        controller::LQRController<6, 2, 3>::Config lqr;
-        controller::LegController::Config leg_control;
-        controller::RotateController::Config rotate;
-        controller::StateEstimator::Config state_estimator;
+        controller::LQRController<6, 2, 3>::Config  lqr;
+        controller::LegController::Config           leg_control;
+        controller::RotateController::Config        rotate;
+        controller::StateEstimator::Config          state_estimator;
+        JFSMConfig                                  jfsm;            
         
         float control_frequency = 333.33f;
     };
