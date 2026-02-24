@@ -200,53 +200,71 @@ void WheelLeggedRobot::forwardDynamics(
         float phi2 = fivelink_joint_frame_[i].phi[2];
         float phi3 = fivelink_joint_frame_[i].phi[3];
         float phi4 = fivelink_joint_frame_[i].phi[4];
+
+        // L0 保护：未初始化或退化构型时安全退出
+        if (std::abs(L0) < 1e-6f) {
+            Tp[i] = 0.0f;
+            F[i]  = 0.0f;
+            // update_frame 时也清零，避免残留脏数据
+            if (update_frame) {
+                fivelink_force_frame_[i].Fx = 0.0f;
+                fivelink_force_frame_[i].Fy = 0.0f;
+                vmc_force_frame_[i].Tp = 0.0f;
+                vmc_force_frame_[i].F  = 0.0f;
+            }
+            continue;
+        }
+
+        // sin(phi3-phi2) 保护：雅可比矩阵奇异（腿完全伸直/折叠）
+        float sin_diff = std::sin(phi3 - phi2);
+        if (std::abs(sin_diff) < 1e-6f) {
+            Tp[i] = 0.0f;
+            F[i]  = 0.0f;
+            if (update_frame) {
+                fivelink_force_frame_[i].Fx = 0.0f;
+                fivelink_force_frame_[i].Fy = 0.0f;
+                vmc_force_frame_[i].Tp = 0.0f;
+                vmc_force_frame_[i].F  = 0.0f;
+            }
+            continue;
+        }
+
         // step2:calculate velocity jacobin matrix and it transpose
-        Eigen::MatrixXf vJacobian_Matrix(2,2);
-        vJacobian_Matrix(0,0) = -L1*std::sin(phi1 - phi2)*std::sin(phi3)/std::sin(phi3 - phi2);
-        vJacobian_Matrix(1,0) =  L1*std::sin(phi1 - phi2)*std::cos(phi3)/std::sin(phi3 - phi2);
-        vJacobian_Matrix(0,1) = -L1*std::sin(phi3 - phi4)*std::sin(phi2)/std::sin(phi3 - phi2);
-        vJacobian_Matrix(1,1) =  L1*std::sin(phi3 - phi4)*std::cos(phi2)/std::sin(phi3 - phi2);
-        Eigen::MatrixXf vJacobian_T_Matrix(2,2);
-        vJacobian_T_Matrix = vJacobian_Matrix.transpose();
+        Eigen::Matrix<float, 2, 2> vJ;
+        vJ(0,0) = -L1*std::sin(phi1-phi2)*std::sin(phi3)/sin_diff;
+        vJ(1,0) =  L1*std::sin(phi1-phi2)*std::cos(phi3)/sin_diff;
+        vJ(0,1) = -L1*std::sin(phi3-phi4)*std::sin(phi2)/sin_diff;
+        vJ(1,1) =  L1*std::sin(phi3-phi4)*std::cos(phi2)/sin_diff;
+
         // step3:calculate R matrix
-        Eigen::MatrixXf R_Matrix(2,2);
-        R_Matrix(0,0) =  std::cos(phi0 - PI/2);
-        R_Matrix(1,0) =  std::sin(phi0 - PI/2);
-        R_Matrix(0,1) = -std::sin(phi0 - PI/2);
-        R_Matrix(1,1) =  std::cos(phi0 - PI/2);
+        Eigen::Matrix<float, 2, 2> R;
+        R(0,0) =  std::cos(phi0 - PI/2);
+        R(1,0) =  std::sin(phi0 - PI/2);
+        R(0,1) = -std::sin(phi0 - PI/2);
+        R(1,1) =  std::cos(phi0 - PI/2);
+
         // step4:calculate M matrix
-        Eigen::MatrixXf M_Matrix(2,2);
-        M_Matrix(0,0) =  -1/L0;
-        M_Matrix(1,0) =  0;
-        M_Matrix(0,1) =  0;
-        M_Matrix(1,1) =  1;
+        Eigen::Matrix<float, 2, 2> M;
+        M(0,0) = -1.0f/L0;  M(0,1) = 0.0f;  // L0 已保护，安全
+        M(1,0) =  0.0f;     M(1,1) = 1.0f;
+
         // step5:define F matrix, F = [Tp;F]
-        Eigen::MatrixXf T_Matrix;
-        float T_MatrixData[] = {torqueA[i], torqueE[i]};
-        T_Matrix = Eigen::Map<Eigen::Matrix<float, 2, 1>>(T_MatrixData);
+        Eigen::Matrix<float, 2, 1> T_vec;
+        T_vec(0) = torqueA[i];
+        T_vec(1) = torqueE[i];
 
-        Eigen::MatrixXf out1_Matrix;
-        Eigen::MatrixXf out2_Matrix;
-        Eigen::MatrixXf out3_Matrix;
-        float out1_MatrixData[2*1] = {0};
-        float out2_MatrixData[2*2] = {0};     
-        float out3_MatrixData[2*1] = {0};
-        out1_Matrix = Eigen::Map<Eigen::Matrix<float, 2, 1>>(out1_MatrixData);
-        out2_Matrix = Eigen::Map<Eigen::Matrix<float, 2, 2, Eigen::RowMajor>>(out2_MatrixData);
-        out3_Matrix = Eigen::Map<Eigen::Matrix<float, 2, 1>>(out3_MatrixData);        
         // step6:[TA;TE] = transpose(velocity_jacobin)*R*M*F
-        out1_Matrix = vJacobian_T_Matrix.inverse() * T_Matrix;
-        out2_Matrix = R_Matrix * M_Matrix;
-        out3_Matrix =  out2_Matrix.inverse() * out1_Matrix;
-        
-        Tp[i] = out3_Matrix(0);
-        F[i] = out3_Matrix(1); 
+        Eigen::Matrix<float, 2, 1> Fxy = vJ.transpose().inverse() * T_vec;
+        Eigen::Matrix<float, 2, 1> out  = (R * M).inverse() * Fxy;
+     
+        Tp[i] = out(0);
+        F[i]  = out(1);
 
-        if(update_frame){
-            fivelink_force_frame_[i].Fx = out1_Matrix(0);
-            fivelink_force_frame_[i].Fy = out1_Matrix(1);
-            vmc_force_frame_[i].F = F[i];
+        if (update_frame) {
+            fivelink_force_frame_[i].Fx = Fxy(0);
+            fivelink_force_frame_[i].Fy = Fxy(1);
             vmc_force_frame_[i].Tp = Tp[i];
+            vmc_force_frame_[i].F  = F[i];
         }
     }
 }
@@ -278,47 +296,48 @@ void WheelLeggedRobot::inverseDynamics(
         float phi2 = fivelink_joint_frame_[i].phi[2];
         float phi3 = fivelink_joint_frame_[i].phi[3];
         float phi4 = fivelink_joint_frame_[i].phi[4];
-        // step2:calculate velocity jacobin matrix and it transpose
-        Eigen::MatrixXf vJacobian_Matrix(2,2);
-        vJacobian_Matrix(0,0) = -L1*std::sin(phi1 - phi2)*std::sin(phi3)/std::sin(phi3 - phi2);
-        vJacobian_Matrix(1,0) =  L1*std::sin(phi1 - phi2)*std::cos(phi3)/std::sin(phi3 - phi2);
-        vJacobian_Matrix(0,1) = -L1*std::sin(phi3 - phi4)*std::sin(phi2)/std::sin(phi3 - phi2);
-        vJacobian_Matrix(1,1) =  L1*std::sin(phi3 - phi4)*std::cos(phi2)/std::sin(phi3 - phi2);
-        Eigen::MatrixXf vJacobian_T_Matrix(2,2);
-        vJacobian_T_Matrix = vJacobian_Matrix.transpose();
-        // step3:calculate R matrix
-        Eigen::MatrixXf R_Matrix(2,2);
-        R_Matrix(0,0) =  std::cos(phi0 - PI/2);
-        R_Matrix(1,0) =  std::sin(phi0 - PI/2);
-        R_Matrix(0,1) = -std::sin(phi0 - PI/2);
-        R_Matrix(1,1) =  std::cos(phi0 - PI/2);
-        // step4:calculate M matrix
-        Eigen::MatrixXf M_Matrix(2,2);
-        M_Matrix(0,0) =  -1/L0;
-        M_Matrix(1,0) =  0;
-        M_Matrix(0,1) =  0;
-        M_Matrix(1,1) =  1;
-        // step5:define F matrix, F = [Tp;F]
-        Eigen::MatrixXf F_Matrix(2,1);
-        float F_MatrixData[] = {Tp[i], F[i]};
-        F_Matrix = Eigen::Map<Eigen::Matrix<float, 2, 1>>(F_MatrixData);  
 
-        Eigen::MatrixXf out1_Matrix(2, 1);
-        Eigen::MatrixXf out2_Matrix(2, 1);
-        Eigen::MatrixXf out3_Matrix(2, 1);
-        float out1_MatrixData[2] = {0, 0};
-        float out2_MatrixData[2] = {0, 0};
-        float out3_MatrixData[2] = {0, 0};      
-        out1_Matrix = Eigen::Map<Eigen::Matrix<float, 2, 1>>(out1_MatrixData);
-        out2_Matrix = Eigen::Map<Eigen::Matrix<float, 2, 1>>(out2_MatrixData);
-        out3_Matrix = Eigen::Map<Eigen::Matrix<float, 2, 1>>(out3_MatrixData);  
-        // step6:[TA;TE] = transpose(velocity_jacobin)*R*M*F
-        out1_Matrix = M_Matrix * F_Matrix;
-        out2_Matrix = R_Matrix * out1_Matrix;
-        out3_Matrix = vJacobian_T_Matrix * out2_Matrix;
-        
-        torqueA[i] = out3_Matrix(0);
-        torqueE[i] = out3_Matrix(1); 
+        if (std::abs(L0) < 1e-6f) {
+            fprintf(stderr, "[InverseDyn] side=%d L0=0, skip\n", i);
+            torqueA[i] = 0.0f; torqueE[i] = 0.0f;
+            continue;
+        }
+
+        float sin_diff = std::sin(phi3 - phi2);
+        if (std::abs(sin_diff) < 1e-6f) {
+            fprintf(stderr, "[InverseDyn] side=%d sin(phi3-phi2)=0, singular\n", i);
+            torqueA[i] = 0.0f; torqueE[i] = 0.0f;
+            continue;
+        }
+
+        // step2:calculate velocity jacobin matrix and it transpose
+        Eigen::Matrix<float, 2, 2> vJ;
+        vJ(0,0) = -L1*std::sin(phi1-phi2)*std::sin(phi3)/sin_diff;
+        vJ(1,0) =  L1*std::sin(phi1-phi2)*std::cos(phi3)/sin_diff;
+        vJ(0,1) = -L1*std::sin(phi3-phi4)*std::sin(phi2)/sin_diff;
+        vJ(1,1) =  L1*std::sin(phi3-phi4)*std::cos(phi2)/sin_diff;
+        Eigen::MatrixXf vJacobian_Matrix(2,2);
+
+        // step3:calculate R matrix
+        Eigen::Matrix<float, 2, 2> R;
+        R(0,0) =  std::cos(phi0 - PI/2);
+        R(1,0) =  std::sin(phi0 - PI/2);
+        R(0,1) = -std::sin(phi0 - PI/2);
+        R(1,1) =  std::cos(phi0 - PI/2);
+
+        // step4:calculate M matrix
+        Eigen::Matrix<float, 2, 2> M;
+        M(0,0) = -1.0f/L0;  M(0,1) = 0.0f;
+        M(1,0) =  0.0f;     M(1,1) = 1.0f;
+
+        // step5:define F matrix, F = [Tp;F]
+        Eigen::Matrix<float, 2, 1> F_vec;
+        F_vec(0) = Tp[i];
+        F_vec(1) = F[i];
+
+        Eigen::Matrix<float, 2, 1> out = vJ.transpose() * R * M * F_vec;
+        torqueA[i] = out(0);
+        torqueE[i] = out(1);
     } 
 }
 

@@ -9,7 +9,7 @@
 #ifndef WHEEL_LEGGED_ROBOT_HPP
 #define WHEEL_LEGGED_ROBOT_HPP
 
-#include "joint_state_interface.hpp"
+#include "wheel_legged_interfaces/joint_state_interface.hpp"
 #include <Eigen/Dense>
 #include <array>
 #include <cmath>
