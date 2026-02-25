@@ -39,40 +39,56 @@ fi
 # ================== 编译 ==================
 echo -e "${GREEN}Building workspace...${NC}"
 colcon build \
-  --packages-select wheel_legged_msgs \
-  --parallel-workers $JOBS \
-  --cmake-args \
-    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-colcon build \
-  --packages-select wheel_legged_sim \
-  --parallel-workers $JOBS \
-  --cmake-args \
-    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-colcon build \
-  --packages-select wheel_legged_hw \
-  --parallel-workers $JOBS \
-  --cmake-args \
-    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-colcon build \
-  --packages-select wheel_legged_description \
-  --symlink-install \
-  --parallel-workers $JOBS
-colcon build \
-  --packages-select wheel_legged_control \
-  --parallel-workers $JOBS \
-  --cmake-args \
-    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-colcon build \
-  --packages-select wheel_legged_launch \
   --symlink-install \
   --parallel-workers $JOBS \
   --cmake-args \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+# colcon build \
+#   --packages-select wheel_legged_msgs \
+#   --parallel-workers $JOBS \
+#   --cmake-args \
+#     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+#     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# colcon build \
+#   --packages-select wheel_legged_interfaces \
+#   --parallel-workers $JOBS \
+#   --cmake-args \
+#     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+#     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# source install/setup.bash
+# colcon build \
+#   --packages-select wheel_legged_description \
+#   --symlink-install \
+#   --parallel-workers $JOBS
+
+# colcon build \
+#   --packages-select wheel_legged_control \
+#   --parallel-workers $JOBS \
+#   --cmake-args \
+#     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+#     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# colcon build \
+#   --packages-select wheel_legged_sim \
+#   --parallel-workers $JOBS \
+#   --cmake-args \
+#     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+#     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# colcon build \
+#   --packages-select wheel_legged_hw \
+#   --parallel-workers $JOBS \
+#   --cmake-args \
+#     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+#     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+# colcon build \
+#   --packages-select wheel_legged_launch \
+#   --symlink-install \
+#   --parallel-workers $JOBS \
+#   --cmake-args \
+#     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+#     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 
 echo -e "${GREEN}Build finished successfully ✅${NC}"
