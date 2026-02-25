@@ -12,8 +12,13 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 install(
   DIRECTORY 
-  Infantry_wheelLegged_cyclBot
-  DESTINATION share/${PROJECT_NAME}
+  cyclBot
+  DESTINATION share/${PROJECT_NAME}/
+)
+install(
+  DIRECTORY 
+  seriBot
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 if(BUILD_TESTING)

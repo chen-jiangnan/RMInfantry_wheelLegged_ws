@@ -1,0 +1,248 @@
+<mujoco model="wheelLegged_seriBot">
+  <compiler angle="radian" meshdir="../meshes/"/>
+
+  <default>
+    <default class='hip_front_joint'>
+        <joint damping="1" frictionloss="0.0" armature="0.0"/>
+    </default> 
+    <default class='hip_rear_joint'>
+        <joint damping="0.15" frictionloss="0.0" armature="0.0"/>
+    </default> 
+    <default class='knee_joint'>
+        <joint damping="0.02" frictionloss="0.00" armature="0.0"/>
+    </default> 
+    <default class='wheel_joint'>
+        <joint damping="0.01" frictionloss="0.05" armature="0.0"/>
+    </default> 
+    <default class='gimbal_pitch_joint'>
+        <joint damping="0.004" frictionloss="0.016" armature="0.0"/>
+    </default> 
+    <default class='gimbal_yaw_joint'>
+        <joint damping="0.012" frictionloss="0.009" armature="0.0"/>
+    </default> 
+    <default class='friction_wheel_joint'>
+        <joint damping="0.002" frictionloss="0.009" armature="0.0"/>
+    </default> 
+    <default class='feeder_desk_joint'>
+        <joint damping="0.002" frictionloss="0.009" armature="0.0"/>
+    </default> 
+    <default class="passive_joint">
+        <joint damping="0.02" frictionloss="0.0" armature="0.0"/>
+    </default>
+  </default>
+
+  <default>
+    <default class='DM_8009P_motor'>
+        <motor ctrlrange="-50 50"/>
+    </default> 
+    <default class='DJI_GM6020_motor'>
+        <motor ctrlrange="-5 5"/>
+    </default> 
+    <default class='DJI_M2006_motor'>
+        <motor ctrlrange="-5 5"/>
+    </default> 
+    <default class='DJI_M3508_motor'>
+        <motor ctrlrange="-3 3"/>
+    </default> 
+  </default>
+
+  <asset>
+    <mesh name="base_link" file="base_link.STL"/>
+    <mesh name="left_front_hip_link" file="left_front_hip_link.STL"/>
+    <mesh name="left_child1_link" file="left_child1_link.STL"/>
+    <mesh name="left_child2_link" file="left_child2_link.STL"/>
+    <mesh name="left_child3_link" file="left_child3_link.STL"/>
+    <mesh name="left_front_zcfront_link" file="left_front_zcfront_link.STL"/>
+    <mesh name="left_rear_mind_link" file="left_rear_mind_link.STL"/>
+    <mesh name="left_rear_hip_link" file="left_rear_hip_link.STL"/>
+    <mesh name="left_rear_knee_link" file="left_rear_knee_link.STL"/>
+    <mesh name="left_chassis_wheel_link" file="left_chassis_wheel_link.STL"/>
+    <mesh name="left_zrear_link" file="left_zrear_link.STL"/>
+    <mesh name="left_front_zfront_link" file="left_front_zfront_link.STL"/>
+    <mesh name="right_front_hip_link" file="right_front_hip_link.STL"/>
+    <mesh name="right_child1_link" file="right_child1_link.STL"/>
+    <mesh name="right_child2_link" file="right_child2_link.STL"/>
+    <mesh name="right_child3_link" file="right_child3_link.STL"/>
+    <mesh name="right_front_zcfront_link" file="right_front_zcfront_link.STL"/>
+    <mesh name="right_rear_mind_link" file="right_rear_mind_link.STL"/>
+    <mesh name="right_rear_hip_link" file="right_rear_hip_link.STL"/>
+    <mesh name="right_rear_knee_link" file="right_rear_knee_link.STL"/>
+    <mesh name="right_chassis_wheel_link" file="right_chassis_wheel_link.STL"/>
+    <mesh name="right_zrear_link" file="right_zrear_link.STL"/>
+    <mesh name="right_front_zfront_link" file="right_front_zfront_link.STL"/>
+  </asset>
+
+  <worldbody>
+    <body name="base_link" pos="0 0 0.15">
+      <inertial pos="0.0296601 -0.00111007 0.0879794" quat="0.490705 0.523624 -0.476258 0.508139" mass="11.4476" diaginertia="0.261465 0.160901 0.152424"/>
+      <joint name="floating_base_joint" type="free"/>
+      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.898039 0.917647 0.929412 1" mesh="base_link"/>
+      <geom type="mesh" contype="2" conaffinity="1" rgba="0.898039 0.917647 0.929412 1" mesh="base_link"/>
+      <site name="imu" pos="0 0 0"/>
+      <body name="left_front_hip_link" pos="-0.000375576 0.200513 0.105513">
+        <inertial pos="0.0266508 -0.00691281 0.00231006" quat="0.512977 0.467566 0.48598 0.531093" mass="0.092808" diaginertia="0.000147923 0.000133466 1.77609e-05"/>
+        <joint name="left_front_hip_joint" pos="0 0 0" axis="0 1 0" class='hip_front_joint'/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.898039 0.917647 0.929412 1" mesh="left_front_hip_link"/>
+        <!-- <geom type="mesh" contype="4" conaffinity="5" rgba="0.898039 0.917647 0.929412 1" mesh="left_front_hip_link"/> -->
+        <body name="left_child1_link" pos="0.0996033 0 0.00889802">
+          <inertial pos="-0.0490916 -0.0177 -0.032852" quat="0.623729 0.33311 0.33311 0.623729" mass="0.0396604" diaginertia="6.239e-05 6.08117e-05 2.15828e-06"/>
+          <joint name="left_child1_joint" pos="0 0 0" axis="0 1 0" class="passive_joint" range="-1.45 0"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.792157 0.819608 0.933333 1" mesh="left_child1_link"/>
+          <!-- <geom type="mesh" contype="4" conaffinity="5" rgba="0.792157 0.819608 0.933333 1" mesh="left_child1_link"/> -->
+          <body name="left_child2_link" pos="-0.0981832 -0.0075 -0.065704">
+            <inertial pos="-0.078703 -1.1022e-05 0.0517192" quat="0.319467 0.631065 0.630266 0.320098" mass="0.0317857" diaginertia="0.00010135 9.8292e-05 3.24794e-06"/>
+            <joint name="left_child2_joint" pos="0 0 0" axis="0 1 0"  class="passive_joint" range="0 0.935"/>
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.792157 0.819608 0.933333 1" mesh="left_child2_link"/>
+            <geom type="mesh" contype="4" conaffinity="5" rgba="0.792157 0.819608 0.933333 1" mesh="left_child2_link"/>
+            <body name="left_child3_link" pos="-0.139163 -0.00025 0.107296">
+              <inertial pos="-0.0686402 -0.0106902 0.00268579" quat="0.485742 0.505975 0.513346 0.494489" mass="0.0634754" diaginertia="0.000126012 0.000123222 3.84594e-06"/>
+              <joint name="left_child3_joint" pos="0 0 0" axis="0 1 0" class="passive_joint" range="-1.46 0"/>
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="left_child3_link"/>
+              <!-- <geom type="mesh" contype="4" conaffinity="5" rgba="1 1 1 1" mesh="left_child3_link"/> -->
+              <site name="left_front_zcfront_site" pos="-0.114912 0.00675 0.00449634" size="0.01" rgba="1 0 0 1"/>
+            </body>
+            <site name="left_rear_mind_site" pos="-0.101344 0.000 0.0607158" size="0.01" rgba="1 0 0 1"/>
+          </body>
+        </body>
+      </body>
+      <body name="left_rear_hip_link" pos="-0.000375577 0.187513 0.105513">
+        <inertial pos="-0.0950349 -0.0057438 0.00529316" quat="0.485117 0.514663 0.510916 0.488618" mass="0.287767" diaginertia="0.00158629 0.0014973 9.6327e-05"/>
+        <joint name="left_rear_hip_joint" pos="0 0 0" axis="0 1 0" class='hip_rear_joint'/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.898039 0.917647 0.929412 1" mesh="left_rear_hip_link"/>
+        <geom type="mesh" contype="4" conaffinity="5" rgba="0.898039 0.917647 0.929412 1" mesh="left_rear_hip_link"/>
+        <body name="left_rear_knee_link" pos="-0.214836 0.0225 0.0084062">
+          <inertial pos="0.0866842 -0.0102356 -0.0488254" quat="0.338114 0.628263 0.614371 0.336915" mass="0.276253" diaginertia="0.00323549 0.00314863 0.000103207"/>
+          <joint name="left_rear_knee_joint" pos="0 0 0" axis="0 1 0" class='knee_joint' range="0 1.46"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.929412 0.929412 0.929412 1" mesh="left_rear_knee_link"/>
+          <geom type="mesh" contype="4" conaffinity="5" rgba="0.929412 0.929412 0.929412 1" mesh="left_rear_knee_link"/>
+          <body name="left_chassis_wheel_link" pos="0.217889 0.01855 -0.130539">
+            <inertial pos="-0.000107439 -0.00493617 3.05868e-05" quat="0.699787 0.0910285 0.0906169 0.702709" mass="0.510379" diaginertia="0.000637384 0.00039375 0.000391846"/>
+            <joint name="left_chassis_wheel_joint" pos="0 0 0" axis="0 1 0" class='wheel_joint'/>
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.752941 0.752941 0.752941 1" mesh="left_chassis_wheel_link"/>
+            <geom type="mesh" contype="4" conaffinity="5" rgba="0.752941 0.752941 0.752941 1" mesh="left_chassis_wheel_link"/>
+          </body>
+          <site name="left_zrear_site" pos="-0.0378193 -0.0105 0.0465801" size="0.01" rgba="0 0 1 1"/>
+        </body>
+        <site name="left_front_zfront_site" pos="-0.0999235 0.0055 0.00390986" size="0.01" rgba="0 0 1 1"/>
+      </body>
+      <body name="right_front_hip_link" pos="-0.000375576 -0.200287 0.105513">
+        <inertial pos="0.0266508 0.00691281 0.00231006" quat="0.531093 0.48598 0.467566 0.512977" mass="0.092808" diaginertia="0.000147923 0.000133466 1.77609e-05"/>
+        <joint name="right_front_hip_joint" pos="0 0 0" axis="0 -1 0" class='hip_front_joint'/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.898039 0.917647 0.929412 1" mesh="right_front_hip_link"/>
+        <!-- <geom type="mesh" contype="4" conaffinity="5" rgba="0.898039 0.917647 0.929412 1" mesh="right_front_hip_link"/> -->
+        <body name="right_child1_link" pos="0.0996033 0 0.00889802">
+          <inertial pos="-0.0490916 0.0177 -0.032852" quat="0.623729 0.33311 0.33311 0.623729" mass="0.0396604" diaginertia="6.239e-05 6.08117e-05 2.15828e-06"/>
+          <joint name="right_child1_joint" pos="0 0 0" axis="0 -1 0" class="passive_joint" range="0 1.45"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.792157 0.819608 0.933333 1" mesh="right_child1_link"/>
+          <!-- <geom type="mesh" contype="4" conaffinity="5" rgba="0.792157 0.819608 0.933333 1" mesh="right_child1_link"/> -->
+          <body name="right_child2_link" pos="-0.0981832 0.0127 -0.065704">
+            <inertial pos="-0.078703 -0.00521102 0.0517192" quat="0.319467 0.631065 0.630266 0.320098" mass="0.0317857" diaginertia="0.00010135 9.8292e-05 3.24794e-06"/>
+            <joint name="right_child2_joint" pos="0 0 0" axis="0 -1 0" class="passive_joint" range="-0.935 0"/>
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.792157 0.819608 0.933333 1" mesh="right_child2_link"/>
+            <geom type="mesh" contype="4" conaffinity="5" rgba="0.792157 0.819608 0.933333 1" mesh="right_child2_link"/>
+            <body name="right_child3_link" pos="-0.139163 -0.0082 0.107296">
+              <inertial pos="-0.0686402 0.0124954 0.00268579" quat="0.485276 0.505152 0.514156 0.494947" mass="0.0634754" diaginertia="0.000126023 0.000123262 3.87512e-06"/>
+              <joint name="right_child3_joint" pos="0 0 0" axis="0 -1 0" class="passive_joint" range="0 1.46"/>
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="right_child3_link"/>
+              <!-- <geom type="mesh" contype="4" conaffinity="5" rgba="1 1 1 1" mesh="right_child3_link"/> -->
+              <site name="right_front_zcfront_site" pos="-0.114912 -0.0035 0.00449634" size="0.01" rgba="1 0 0 1"/>
+            </body>
+            <site name="right_rear_mind_site" pos="-0.101344 -0.0017 0.0607158" size="0.01" rgba="1 0 0 1"/> 
+          </body>
+        </body>
+      </body>
+      <body name="right_rear_hip_link" pos="-0.000375576 -0.187287 0.105513">
+        <inertial pos="-0.0950349 0.0057438 0.00529316" quat="0.488618 0.510916 0.514663 0.485117" mass="0.287767" diaginertia="0.00158629 0.0014973 9.6327e-05"/>
+        <joint name="right_rear_hip_joint" pos="0 0 0" axis="0 -1 0" class='hip_rear_joint'/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.898039 0.917647 0.929412 1" mesh="right_rear_hip_link"/>
+        <geom type="mesh" contype="4" conaffinity="5" rgba="0.898039 0.917647 0.929412 1" mesh="right_rear_hip_link"/>
+        <body name="right_rear_knee_link" pos="-0.214836 -0.0225 0.00840619">
+          <inertial pos="0.0866853 0.0102356 -0.0488254" quat="0.336905 0.614391 0.628245 0.338122" mass="0.276253" diaginertia="0.00323543 0.00314858 0.00010321"/>
+          <joint name="right_rear_knee_joint" pos="0 0 0" axis="0 -1 0" class='knee_joint' range="-1.46 0"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.929412 0.929412 0.929412 1" mesh="right_rear_knee_link"/>
+          <geom type="mesh" contype="4" conaffinity="5" rgba="0.929412 0.929412 0.929412 1" mesh="right_rear_knee_link"/>
+          <body name="right_chassis_wheel_link" pos="0.217889 -0.02805 -0.130539">
+            <inertial pos="0.000111692 0.0174362 -1.87378e-06" quat="0.705519 0.0130236 0.0129903 0.708452" mass="0.510379" diaginertia="0.000637384 0.000393748 0.000391847"/>
+            <joint name="right_chassis_wheel_joint" pos="0 0 0" axis="0 -1 0" class='wheel_joint'/>
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.752941 0.752941 0.752941 1" mesh="right_chassis_wheel_link"/>
+            <geom type="mesh" contype="4" conaffinity="5" rgba="0.752941 0.752941 0.752941 1" mesh="right_chassis_wheel_link"/>
+          </body>
+          <site name="right_zrear_site" pos="-0.0378193 0.0105 0.0465801" size="0.01" rgba="0 0 1 1"/> 
+        </body>
+        <site name="right_front_zfront_site" pos="-0.0999235 -0.002 0.00390986" size="0.01" rgba="0 0 1 1"/> 
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <!-- 底盘机构电机 -->
+    <motor name="left_front_hip_motor" joint="left_front_hip_joint" gear="1" ctrllimited="true"  class='DM_8009P_motor'/>
+    <motor name="left_rear_hip_motor"  joint="left_rear_hip_joint"  gear="1" ctrllimited="true"  class='DM_8009P_motor'/>
+    <motor name="left_chassis_wheel_motor" joint="left_chassis_wheel_joint" gear="1" ctrllimited="true" class='DJI_M3508_motor'/>
+    <motor name="right_front_hip_motor" joint="right_front_hip_joint" gear="1" ctrllimited="true" class='DM_8009P_motor'/>
+    <motor name="right_rear_hip_motor"  joint="right_rear_hip_joint"  gear="1" ctrllimited="true" class='DM_8009P_motor'/>
+    <motor name="right_chassis_wheel_motor" joint="right_chassis_wheel_joint" gear="1" ctrllimited="true" class='DJI_M3508_motor'/>
+    <!-- 云台机构电机 -->
+    <!-- <motor name="gimbal_yaw_motor"  joint="gimbal_yaw_joint" gear="1" ctrllimited="true" class='DJI_GM6020_motor'/>
+    <motor name="gimbal_pitch_motor"  joint="gimbal_pitch_motor_joint" gear="1" ctrllimited="true" class='DJI_GM6020_motor'/> -->
+    <!-- 发射机构电机 -->
+    <!-- <motor name="left_friction_wheel_motor"  joint="left_friction_wheel_joint" gear="1" ctrllimited="true" class='DJI_M3508_motor'/>
+    <motor name="right_friction_wheel_motor"  joint="right_friction_wheel_joint" gear="1" ctrllimited="true" class='DJI_M3508_motor'/>
+    <motor name="feeder_desk_motor"  joint="feeder_desk_joint" gear="1" ctrllimited="true" class='DJI_M2006_motor'/> -->
+  </actuator>
+
+  <sensor>
+    <jointpos name="left_front_hip_pos" joint="left_front_hip_joint" />
+    <jointpos name="left_rear_hip_pos" joint="left_rear_hip_joint" />
+    <jointpos name="left_chassis_wheel_pos" joint="left_chassis_wheel_joint" />
+    <jointpos name="right_front_hip_pos" joint="right_front_hip_joint" />
+    <jointpos name="right_rear_hip_pos" joint="right_rear_hip_joint" />
+    <jointpos name="right_chassis_wheel_pos" joint="right_chassis_wheel_joint" />
+    <!-- <jointpos name="gimbal_yaw_pos" joint="gimbal_yaw_joint" />
+    <jointpos name="gimbal_pitch_pos" joint="gimbal_pitch_motor_joint" />
+    <jointpos name="left_friction_wheel_pos" joint="left_friction_wheel_joint" />
+    <jointpos name="right_friction_wheel_pos" joint="right_friction_wheel_joint" />
+    <jointpos name="feeder_desk_pos" joint="feeder_desk_joint" /> -->
+
+    <jointvel name="left_front_hip_vel" joint="left_front_hip_joint" />
+    <jointvel name="left_rear_hip_vel" joint="left_rear_hip_joint" />
+    <jointvel name="left_chassis_wheel_vel" joint="left_chassis_wheel_joint" />
+    <jointvel name="right_front_hip_vel" joint="right_front_hip_joint" />
+    <jointvel name="right_rear_hip_vel" joint="right_rear_hip_joint" />
+    <jointvel name="right_chassis_wheel_vel" joint="right_chassis_wheel_joint" />
+    <!-- <jointvel name="gimbal_yaw_vel" joint="gimbal_yaw_joint" />
+    <jointvel name="gimbal_pitch_vel" joint="gimbal_pitch_motor_joint" />
+    <jointvel name="left_friction_wheel_vel" joint="left_friction_wheel_joint" />
+    <jointvel name="right_friction_wheel_vel" joint="right_friction_wheel_joint" />
+    <jointvel name="feeder_desk_vel" joint="feeder_desk_joint" /> -->
+
+    <jointactuatorfrc name="left_front_hip_torque" joint="left_front_hip_joint" noise="0.01"/>
+    <jointactuatorfrc name="left_rear_hip_torque" joint="left_rear_hip_joint" noise="0.01"/>
+    <jointactuatorfrc name="left_chassis_wheel_torque" joint="left_chassis_wheel_joint" noise="0.01"/>
+    <jointactuatorfrc name="right_front_hip_torque" joint="right_front_hip_joint" noise="0.01"/>
+    <jointactuatorfrc name="right_rear_hip_torque" joint="right_rear_hip_joint" noise="0.01"/>
+    <jointactuatorfrc name="right_chassis_wheel_torque" joint="right_chassis_wheel_joint" noise="0.01"/>
+    <!-- <jointactuatorfrc name="gimbal_yaw_torque" joint="gimbal_yaw_joint" noise="0.01"/>
+    <jointactuatorfrc name="gimbal_pitch_torque" joint="gimbal_pitch_motor_joint" noise="0.01"/>
+    <jointactuatorfrc name="left_friction_wheel_torque" joint="left_friction_wheel_joint" noise="0.01"/>
+    <jointactuatorfrc name="right_friction_wheel_torque" joint="right_friction_wheel_joint" noise="0.01"/>
+    <jointactuatorfrc name="feeder_desk_torque" joint="feeder_desk_joint" noise="0.01"/> -->
+
+    <framequat name="chassis_imu_quat" objtype="site" objname="imu" />
+    <gyro name="chassis_imu_gyro" site="imu" />
+    <accelerometer name="chassis_imu_acc" site="imu" />
+    
+    <framepos name="frame_pos" objtype="site" objname="imu" />
+    <framelinvel name="frame_vel" objtype="site" objname="imu" />
+  </sensor>  
+
+  <equality>
+    <connect name="left_loop1" site1="left_front_zfront_site" site2="left_rear_mind_site" solref="0.001 1" solimp="0.99 0.99 0.01 0.5 2"/>
+    <connect name="left_loop2" site1="left_zrear_site" site2="left_front_zcfront_site" solref="0.001 1" solimp="0.99 0.99 0.01 0.5 2"/>
+    <connect name="right_loop1" site1="right_front_zfront_site" site2="right_rear_mind_site" solref="0.001 1" solimp="0.99 0.99 0.01 0.5 2"/>
+    <connect name="right_loop2" site1="right_zrear_site" site2="right_front_zcfront_site" solref="0.001 1" solimp="0.99 0.99 0.01 0.5 2"/>
+  </equality>
+  <keyframe>
+    <key name="home" qpos="0 0 0 0 0 0 0 0 0 0 0 0 0 0" />
+  </keyframe>
+</mujoco>
