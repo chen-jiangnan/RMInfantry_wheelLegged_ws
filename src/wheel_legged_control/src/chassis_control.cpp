@@ -1,651 +1,403 @@
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "chassis_config_manager.hpp"
 #include "Controller/LegController.hpp"
 #include "Controller/LQRController.hpp"
 #include "Controller/RotateController.hpp"
 #include "Controller/StateEstimator.hpp"
 #include "Model/WheelLeggedRobot.hpp"
-#include "joint_state_interface.hpp"
-#include "joint_cmd_interface.hpp"
-#include "imu_state_interface.hpp"
-#include "jointFSM.hpp"
+#include "joint_fsm.hpp"
+#include "wheel_legged_interfaces/imu_state_interface.hpp"
+#include "wheel_legged_interfaces/joint_state_interface.hpp"
+#include "wheel_legged_interfaces/joint_cmd_interface.hpp"
 #include "wheel_legged_msgs/msg/chassis_state.hpp"
 #include <array>
 #include <memory>
 #include "chassis_ctrl_interface.hpp"
 #include "chassis_state_interface.hpp"
 
-
-
 using namespace robot;
 using namespace controller;
 using namespace config_manager;
 using namespace wheel_legged_interfaces;
 
-class ChassisControlNode : public rclcpp::Node{
+class ChassisControlNode : public rclcpp::Node {
 public:
-  ChassisControlNode(std::string name):Node(name){
-    RCLCPP_INFO(this->get_logger(), "%s节点已启动.", name.c_str());
+    explicit ChassisControlNode(const std::string& name) : Node(name) {
+        RCLCPP_INFO(get_logger(), "%s 节点已启动", name.c_str());
 
-    // ==================== 创建配置管理器 ====================
-    config_manager_ = std::make_unique<ChassisConfigManager>(this);
-    // 声明参数
-    config_manager_->declareParameters();    
-    // 加载模型参数
-    std::string model_path = this->get_parameter("model_config_path").as_string();
-    if (!config_manager_->loadModelParameters(model_path)) {
-        throw std::runtime_error("模型参数加载失败");
+        // ── 配置管理器 ──
+        config_manager_ = std::make_unique<ChassisConfigManager>(this);
+        config_manager_->declareParameters();
+        std::string model_path = get_parameter("model_config_path").as_string();
+        if (!config_manager_->loadModelParameters(model_path))
+            throw std::runtime_error("模型参数加载失败");
+        config_manager_->loadControllerParameters();
+        config_manager_->printConfiguration();
+        config_manager_->setParameterCallback(
+            std::bind(&ChassisControlNode::onParamChanged, this, std::placeholders::_1));
+
+        // ── 接口对象 ──
+        imu_state_    = std::make_unique<IMUStateInterface>();
+        joints_state_ = std::make_unique<JointStateInterface>(6, JointStateInterface::MODE_IDLE);
+        joints_cmd_   = std::make_unique<JointCmdInterface>(6, JointCmdInterface::MODE_IDLE);
+        chassis_ctrl_ = std::make_unique<ChassisCtrlInterface>();
+        chassis_state_= std::make_unique<ChassisStateInterface>();
+        chassis_state_->bind(&robot_, &leg_controller_, &lqr_controller_,
+                             &rotate_controller_, &state_estimator_);
+
+        // ── FSM 初始化 ──
+        initFSM();
+
+        // ── ROS2 发布/订阅 ──
+        imu_state_sub_ = create_subscription<wheel_legged_msgs::msg::IMUState>(
+            "lowlevel/imuState", 10,
+            [this](wheel_legged_msgs::msg::IMUState::SharedPtr msg) {
+                imu_state_->fromMsg(*msg);
+            });
+
+        joints_state_sub_ = create_subscription<wheel_legged_msgs::msg::JointStates>(
+            "lowlevel/chassisJointState", 10,
+            [this](wheel_legged_msgs::msg::JointStates::SharedPtr msg) {
+                joints_state_->fromMsgs(*msg);
+            });
+
+        chassis_ctrl_sub_ = create_subscription<wheel_legged_msgs::msg::ChassisCtrl>(
+            "highlevel/chassisCtrl", 10,
+            [this](wheel_legged_msgs::msg::ChassisCtrl::SharedPtr msg) {
+                // FSM 状态切换
+                auto it = kFSMTriggerMap.find(msg->joint_fsm_mode);
+                if (it != kFSMTriggerMap.end()) {
+                    fsm_->trigger(it->second);
+                }
+                chassis_ctrl_->fromMsg(*msg);
+                // chassis_ctrl_->print();
+            });
+
+        joints_cmd_pub_    = create_publisher<wheel_legged_msgs::msg::JointCmds>(
+            "lowlevel/chassisJointCmd", 10);
+        chassis_state_pub_ = create_publisher<wheel_legged_msgs::msg::ChassisState>(
+            "highlevel/chassisState", 10);
+
+        // ── 定时器 ──
+        joint_cmd_timer_ = create_wall_timer(
+            std::chrono::milliseconds(1),
+            [this] { joints_cmd_pub_->publish(joints_cmd_->toMsgs()); });
+
+        chassis_state_timer_ = create_wall_timer(
+            std::chrono::milliseconds(1),
+            [this] { chassis_state_pub_->publish(chassis_state_->toMsg()); });
+        // debug_timer_ = create_wall_timer(
+        //     std::chrono::milliseconds(100),
+        //     [this] { robot_.printModelStateInfo(); lqr_controller_.printDebugInfo(); });
+
+
+        // ── 控制线程 ──
+        control_thread_ = std::thread(&ChassisControlNode::controlLoop, this);
     }
-    // 加载控制器参数
-    config_manager_->loadControllerParameters();
-    config_manager_->printConfiguration();
-    config_manager_->setParameterCallback(
-      std::bind(&ChassisControlNode::onParamChanged, 
-               this, std::placeholders::_1)
-    );
 
-    // ==================== 创建 High level control接口 =================
-    // imu 接口  
-    imu_state_ = std::make_unique<IMUStateInterface>();
-    // 关节 state/cmd 接口
-    joints_state_ = std::make_unique<JointStateInterface>(6, JointStateInterface::MODE_IDLE);
-    joints_state_->setNames(robot_.join_names);
-    joints_cmd_ = std::make_unique<JointCmdInterface>(6, JointCmdInterface::MODE_IDLE);
-    joints_cmd_->setNames(robot_.join_names);
-    // 底盘 state/ctrl 接口
-    chassis_ctrl_ = std::make_unique<ChassisCtrlInterface>();
-    chassis_state_ = std::make_unique<ChassisStateInterface>();
-    chassis_state_->bind(&robot_, &leg_controller_, &lqr_controller_, &rotate_controller_, &state_estimator_);
+    ~ChassisControlNode() override {
+        if (control_thread_.joinable()) control_thread_.join();
+    }
 
-    // ==================== 创建ROS2订阅/发布者 ==================
-    imu_state_sub_ = this->create_subscription<wheel_legged_msgs::msg::IMUState>(
-      "simulation/IMUState", 10, std::bind(&ChassisControlNode::imuStateSubCallback, this, std::placeholders::_1));   
-    joints_state_sub_ = this->create_subscription<wheel_legged_msgs::msg::JointStates>(
-      "simulation/chassisMotorState", 10, std::bind(&ChassisControlNode::jointStateSubCallback, this, std::placeholders::_1));     
-    joints_cmd_pub_ = this->create_publisher<wheel_legged_msgs::msg::JointCmds>(
-      "simulation/chassisMotorCmd", 10);
-    chassis_ctrl_sub_ = this->create_subscription<wheel_legged_msgs::msg::ChassisCtrl>(
-      "sport/chassisCtrl", 10, std::bind(&ChassisControlNode::chassisCtrlSubCallback, this, std::placeholders::_1));  
-    chassis_state_pub_ = this->create_publisher<wheel_legged_msgs::msg::ChassisState>(
-      "sport/chassisState", 10);
-      
-    // ==================== 创建定时器 ==================
-    joint_cmd_pubTimer_ = this->create_wall_timer(
-        std::chrono::milliseconds(1),  std::bind(&ChassisControlNode::jointCmdPubCallback, this));
-    chassis_state_pubTimer_ = this->create_wall_timer(
-      std::chrono::milliseconds(1),  std::bind(&ChassisControlNode::chassisStatePubCallback, this));
-    debug_timer_ = this->create_wall_timer(
-        std::chrono::milliseconds(10),  std::bind(&ChassisControlNode::debugCallback, this));
-
-
-    // chassis_state_pubTimer_ = this->create_wall_timer(
-    //   std::chrono::milliseconds(1),  // 1000Hz
-    //   std::bind(&ChassisControlNode::ChassisState_timCallback, this));
-    
-    // ==================== 创建任务线程 ====================
-    control_thread_ = std::thread(&ChassisControlNode::controlLoop, this);
-
-  }
-  ~ChassisControlNode() {
-    if (control_thread_.joinable()) {
-      control_thread_.join();
-    } 
-  }
 private:
-  void onParamChanged(const std::vector<rclcpp::Parameter>& params){
-    RCLCPP_INFO(this->get_logger(), "参数变化,重新配置控制器");
-    params_changed_ = true;
-  }
-  void reCfgControllers(){
-    std::lock_guard<std::mutex> lock(param_mutex_);
-        
-    auto& ctrl_params = config_manager_->getControllerParams();
-    
-    lqr_controller_.setConfig(ctrl_params.lqr);
-    leg_controller_.setConfig(ctrl_params.leg_control);
-    rotate_controller_.setConfig(ctrl_params.rotate);
-    state_estimator_.setConfig(ctrl_params.state_estimator);
-    
-    RCLCPP_INFO(this->get_logger(), "所有控制器重新配置完成");    
-  }
-  // ==================== 回调函数 ====================
-  void imuStateSubCallback(const wheel_legged_msgs::msg::IMUState& msg){
-    imu_state_->fromMsg(msg);
-  }
+    // ================================================================
+    //  FSM 初始化
+    //  onEnter：进入状态时执行一次（初始化/清理）
+    //  onExit ：离开状态时执行一次（清理）
+    //  switch ：controlLoop 里每帧持续执行
+    // ================================================================
+    void initFSM() {
+        fsm_ = std::make_unique<JointFSM>(event_);
 
-  void jointStateSubCallback(const wheel_legged_msgs::msg::JointStates& msgs){
-    joints_state_->fromMsgs(msgs);
-  }
+        auto& jfsm_cfg = config_manager_->getControllerParams().jfsm;
+        if (!jfsm_cfg.require_cali) {
+          event_.cali = true;
+          RCLCPP_INFO(get_logger(), "[FSM] 无需校准, cali 直接置位");
+      }
 
-  void chassisCtrlSubCallback(const wheel_legged_msgs::msg::ChassisCtrl& msg){
-    chassis_ctrl_->fromMsg(msg);
-  }
+        // ── onEnter：进入时的一次性初始化 ──────────────────────
+        fsm_->onEnter(JFSMode::ZEROTAU, [this] {
+            RCLCPP_INFO(get_logger(), "[FSM] → ZEROTAU");
+        });
 
-  void jointCmdPubCallback(){
-    auto msgs = joints_cmd_->toMsgs();
-    joints_cmd_pub_->publish(msgs);
-  }
-  void chassisStatePubCallback(){
-    auto msg = chassis_state_->toMsg();
-    chassis_state_pub_->publish(msg);
-  }
+        fsm_->onEnter(JFSMode::DAMPING, [this] {
+            RCLCPP_INFO(get_logger(), "[FSM] → DAMPING");
+        });
 
-  void debugCallback(){
-    // robot_.printModelStateInfo();
-    // lqr_controller_.printDebugInfo();
-  }
+        fsm_->onEnter(JFSMode::CALI, [this] {
+            RCLCPP_INFO(get_logger(), "[FSM] → CALI");
+        });
 
-  void jointFSMCallback(){
-    jfsm_->JFSMUpdate();
-  }
+        fsm_->onEnter(JFSMode::RESET, [this] {
+            RCLCPP_INFO(get_logger(), "[FSM] → RESET");
+        });
 
-  void jointZeroTau(){
-    // 清空控制
-    leg_controller_.clear();
-    rotate_controller_.clear();
-    state_estimator_.clear();
+        fsm_->onEnter(JFSMode::READY, [this] {
+            RCLCPP_INFO(get_logger(), "[FSM] → READY");
+            // 进入 READY 前先确保控制器状态干净
+            // （通常从 RESET 来，RESET 的 onExit 已经清过了，这里保险起见再清一次）
+            clearControllers();
+        });
 
-    // 关节空闲状态（电机失能）
-    for(int i = 0; i < 6; i++){
-      joints_cmd_->setMode(i, JointCmdInterface::MODE_IDLE);
-      joints_cmd_->setPosition(i, 0);
-      joints_cmd_->setVelocity(i, 0);
-      joints_cmd_->setEffort(i, 0);
-      joints_cmd_->setKp(i, 0);
-      joints_cmd_->setKd(i, 0);
+        // ── onExit：离开时的清理 ────────────────────────────────
+        fsm_->onExit(JFSMode::READY, [this] {
+            // 退出 READY 时重置控制器，防止残留积分/历史影响下一次进入
+            RCLCPP_INFO(get_logger(), "[FSM] READY exit → 重置控制器");
+            clearControllers();
+        });
+
+        fsm_->onExit(JFSMode::RESET, [this] {
+            RCLCPP_INFO(get_logger(), "[FSM] RESET exit → 重置控制器");
+            clearControllers();
+        });
     }
-  }
 
-  void jointDamping(){
-
-    leg_controller_.clear();
-    rotate_controller_.clear();
-    state_estimator_.clear();
-
-    for(int i = 0; i < 6; i++){
-      joints_cmd_->setMode(i, JointCmdInterface::MODE_MIT);
-      joints_cmd_->setPosition(i, 0);
-      joints_cmd_->setVelocity(i, 0);
-      joints_cmd_->setEffort(i, 0);
-      joints_cmd_->setKp(i, 0);
-      joints_cmd_->setKd(i, 3);
-    } 
-  }
-
-  void jointCali(){
-
-    leg_controller_.clear();
-    rotate_controller_.clear();
-    state_estimator_.clear();
-
-    // 设置关节为MIT模式， 给髋关节固定施加转速
-    // 判断关节是否到达限位
-    // 设置髋关节 hip_joint_offset 零点
-  }
-
-  void jointReset(){
-
-    leg_controller_.clear();
-    rotate_controller_.clear();
-    state_estimator_.clear();
-
-    /*update body state*/
-    robot_.updateBodyPose(imu_state_->getRPY(), imu_state_->getGyroscope(), imu_state_->getAccelerometer());
-    /*update joint state*/
-    robot_.updateAllJointState(*joints_state_);
-    /*forward kinematics*/
-    std::array<float, 2> rev_phi1, rev_phi4, rev_phi0, rev_L0;
-    rev_phi1[0] = robot_.getHipJoints()[0].q;		// joint space map to fivelink joint frame
-    rev_phi4[0] = robot_.getHipJoints()[1].q;
-    rev_phi1[1] = robot_.getHipJoints()[2].q;
-    rev_phi4[1] = robot_.getHipJoints()[3].q;
-    robot_.forwardKinematics(rev_phi1, rev_phi4, rev_phi0, rev_L0, true);
-
-    /**/
-    std::array<float, 2> set_phi0, set_L0;
-    for(int i = 0; i < 2; i++){
-      // 第一阶段: 伸展腿并使腿向后旋转到目标位置
-      // 第二阶段: 将腿缩回并使腿旋转到目标位置
-      // 第三阶段: Reset模式结束
+    // ── 统一清理入口 ────────────────────────────────────────────
+    void clearControllers() {
+        leg_controller_.clear();
+        lqr_controller_.clear();
+        rotate_controller_.clear();
+        state_estimator_.clear();
     }
-    std::array<float, 2> set_phi1, set_phi4;
-    robot_.inverseKinematics(set_phi0, set_L0, set_phi1, set_phi4);
-    /**/
 
-  }
-
-  void jointReady(float dt){
-      /*update body state*/
-      robot_.updateBodyPose(imu_state_->getRPY(), imu_state_->getGyroscope(), imu_state_->getAccelerometer());
-      /*update joint state*/
-      robot_.updateAllJointState(*joints_state_);
-      /*updata remote control data*/
-      
-      /*forward kinematics*/
-      std::array<float, 2> rev_phi1, rev_phi4, rev_phi0, rev_L0;
-      rev_phi1[0] = robot_.getHipJoints()[0].q;		// joint space map to fivelink joint frame
-      rev_phi4[0] = robot_.getHipJoints()[1].q;
-      rev_phi1[1] = robot_.getHipJoints()[2].q;
-      rev_phi4[1] = robot_.getHipJoints()[3].q;
-      robot_.forwardKinematics(rev_phi1, rev_phi4, rev_phi0, rev_L0, true);
-
-      /*forward dynamics*/
-      std::array<float, 2> rev_torqueA, rev_torqueE, rev_Tp, rev_F;
-      rev_torqueA[0] = robot_.getHipJoints()[0].tau;
-      rev_torqueE[0] = robot_.getHipJoints()[1].tau;
-      rev_torqueA[1] = robot_.getHipJoints()[2].tau;
-      rev_torqueE[1] = robot_.getHipJoints()[3].tau;
-      robot_.forwardDynamics(rev_torqueA, rev_torqueE, rev_Tp, rev_F, true);
-
-      /**/
-      std::array<float, 2> rev_alpha, rev_theta;
-      rev_alpha[0] = robot_.getVMCJointFrames()[0].alpha;
-      rev_alpha[1] = robot_.getVMCJointFrames()[1].alpha;
-      rev_theta[0] = robot_.getVMCJointFrames()[0].theta;
-      rev_theta[1] = robot_.getVMCJointFrames()[1].theta;   
-      state_estimator_.update(rev_alpha, rev_theta, rev_L0);
-
-      /*XV Estimate*/
-      std::array<float, 2> w_ecd;
-      w_ecd[0] = robot_.getWheelJoints()[0].dq;
-      w_ecd[1] = robot_.getWheelJoints()[1].dq;;
-      state_estimator_.estimateVelocity(
-        w_ecd, 
-        robot_.getBodyWorldFrame().a[0],
-        robot_.getBodyWorldFrame().rpy[1],
-        robot_.getConfig().wheel_link[0].lengthOrRadius
-      );
-
-      /*Fn Estimate*/
-      state_estimator_.estimateForce(
-        rev_F,
-        rev_Tp,
-        robot_.getBodyWorldFrame().a[2] - 9.8,
-        robot_.getConfig().wheel_link[0].mass
-      );
-
-      /*lqr Control*/
-      LQRController6x2::StateVector lqr_xd;
-      std::array<LQRController6x2::StateVector, 2> lqr_x;
-      for(size_t index = 0; index < 2; index++){
-        lqr_x[index](0) = robot_.getVMCJointFrames()[index].theta; 
-        lqr_x[index](1) = (
-           robot_.getVMCJointFrames()[index].theta_history[0] 
-          -robot_.getVMCJointFrames()[index].theta_history[1]
-        )/dt; 
-        lqr_x[index](2) = state_estimator_.getVelocityEstimate().x_filter;
-        lqr_x[index](3) = state_estimator_.getVelocityEstimate().v_filter;
-        lqr_x[index](4) = -robot_.getBodyWorldFrame().rpy[1];
-        lqr_x[index](5) = -robot_.getBodyWorldFrame().w[1];
-        /*load lqr k table*/
-        lqr_controller_.updateKFormLegLength(index, rev_L0[index]);
-        if(0 && state_estimator_.detectGround()){
-          // lqr_x[index](0) = 0;  //chassis_ctrl_.target_x[2];
-          // lqr_x[index](1) = 0;  //chassis_ctrl_.target_x[3];
-          lqr_x[index](2) = 0;  //chassis_ctrl_.target_x[2];
-          lqr_x[index](3) = 0;  //chassis_ctrl_.target_x[3];
-          state_estimator_.corverVelocityEstimate(0, 0);
-          
-          // lqr_controller_.setGainMatrix(index, 0, 0, 0);
-          // lqr_controller_.setGainMatrix(index, 0, 1, 0);
-          lqr_controller_.setGainMatrix(index, 0, 2, 0);
-          lqr_controller_.setGainMatrix(index, 0, 3, 0);
-          // lqr_controller_.setGainMatrix(index, 0, 4, 0);
-          // lqr_controller_.setGainMatrix(index, 0, 5, 0);
-          // lqr_controller_.setGainMatrix(index, 1, 0, 0);
-          // lqr_controller_.setGainMatrix(index, 1, 1, 0);
-          lqr_controller_.setGainMatrix(index, 1, 2, 0);
-          lqr_controller_.setGainMatrix(index, 1, 3, 0);
-          // lqr_controller_.setGainMatrix(index, 1, 4, 0);
-          // lqr_controller_.setGainMatrix(index, 1, 5, 0);
-        }else{
-
-        }
-        
-      }
-      auto lqr_u = lqr_controller_.calculate(lqr_xd, lqr_x);
-
-      /*leg control*/
-      std::array<float, 2> target_L0 = {0.20, 0.20};
-      auto leg_u = leg_controller_.calculate(
-        target_L0, 
-        rev_L0, 
-        0, 
-        robot_.getBodyWorldFrame().rpy[0], 
-        rev_theta, 
-        rev_phi0,
-        robot_.getConfig().body_link.mass*G
-      );
-
-      /*body yaw rotate control*/
-      std::array<float, 2> rotate_t = {0};  		// [PID]
-      // rotate_t[0] = rotate_controller_.calculate(0, robot_.getBodyWorldFrame().w[2]);
-      // rotate_t[1] = -rotate_t[0];
-
-      /*inverse dynamics*/
-      std::array<float, 2> set_Tp, set_F, set_T, set_torqueA, set_torqueE;
-      for(int i = 0; i < 2 ;i++)
-      {
-
-        set_Tp[i] = lqr_u[i](1) + leg_u.compensation_tp[i];
-        set_F[i]	= leg_u.F[i];
-        set_T[i] = lqr_u[i](0) + rotate_t[i];
-      }
-      robot_.inverseDynamics(set_Tp, set_F, set_torqueA, set_torqueE);
-
-
-      /*PT-Mix Control*/
-      // limit the q-v-t value
-      for(int i = 0; i < 2; i++){
-        if(set_torqueA[i] > 50.0f){
-          set_torqueA[i] = 50.0f;
-        }else if(set_torqueA[i] <-50.0f){
-          set_torqueA[i] = -50.0f;
-        }
-        if(set_torqueE[i] > 50.0f){
-          set_torqueE[i] = 50.0f;
-        }else if(set_torqueE[i] <-50.0f){
-          set_torqueE[i] = -50.0f;
-        }
-
-        if(set_T[i] > 5.0f){
-          set_T[i] = 5.0f;
-        }else if(set_T[i] <-5.0f){
-          set_T[i] = -5.0f;
-        }
-      }
-
-
-      std::array<float, 6> set_joints_p = {0};
-      std::array<float, 6> set_joints_v = {0};
-      std::array<float, 6> set_joints_t = {
-        set_torqueA[0],
-        set_torqueE[0],
-        set_T[0],
-        set_torqueA[1],
-        set_torqueE[1],
-        set_T[1],
-      };
-      for(int i = 0; i < 6; i++){
-
-        set_joints_p[i] = (robot_.getConfig().joints[i].invert_pos ? -1 : 1) * (set_joints_p[i] - robot_.getConfig().joints[i].pos_offset);
-        set_joints_v[i] = (robot_.getConfig().joints[i].invert_vel ? -1 : 1) * set_joints_v[i];
-        set_joints_t[i] = (robot_.getConfig().joints[i].invert_torque ? -1 : 1) * set_joints_t[i];
-        
-        joints_cmd_->setMode(i, JointCmdInterface::MODE_MIT);
-        joints_cmd_->setPosition(i, set_joints_p[i]);
-        joints_cmd_->setVelocity(i, set_joints_v[i]);
-        joints_cmd_->setEffort(i, set_joints_t[i]);
-        joints_cmd_->setKp(i, 0);
-        joints_cmd_->setKd(i, 0);
-      }    
-  }
-
-
-  void controlLoop2(){
-    /*初始化模型*/
-    robot_.setConfig(config_manager_->getModelParams());
-    /*初始化控制器*/
-    auto& ctrl_params = config_manager_->getControllerParams();
-    lqr_controller_.setConfig(ctrl_params.lqr);
-    leg_controller_.setConfig(ctrl_params.leg_control);
-    rotate_controller_.setConfig(ctrl_params.rotate);
-    state_estimator_.setConfig(ctrl_params.state_estimator);
-    RCLCPP_INFO(this->get_logger(), "所有控制器配置完成"); 
-
-    while(rclcpp::ok()){
-
-      if (params_changed_.load()) {
-        reCfgControllers();
-        params_changed_.store(false);
-      }
-
-      double dt = 1.0 / ctrl_params.control_frequency;
-      switch(jfsm_->getCurrentState()){
-        case JFSMode::ZEROTAU:  jointZeroTau();  break;
-        case JFSMode::CALI:     jointCali();     break;
-        case JFSMode::READY:    jointReady(dt);  break;
-        case JFSMode::RESET:    jointReset();    break;
-        case JFSMode::DAMPING:  jointDamping();  break;
-      };
-
-      std::chrono::duration<double> period(dt);
-      std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::microseconds>(period));
+    // ── 参数热更新 ──────────────────────────────────────────────
+    void onParamChanged(const std::vector<rclcpp::Parameter>&) {
+        params_changed_.store(true);
     }
-  }
 
-  // ==================== 控制循环 ====================
-  void controlLoop(){
-    /*初始化模型*/
-    robot_.setConfig(config_manager_->getModelParams());
-    /*初始化控制器*/
-    auto& ctrl_params = config_manager_->getControllerParams();
-    lqr_controller_.setConfig(ctrl_params.lqr);
-    leg_controller_.setConfig(ctrl_params.leg_control);
-    rotate_controller_.setConfig(ctrl_params.rotate);
-    state_estimator_.setConfig(ctrl_params.state_estimator);
-    RCLCPP_INFO(this->get_logger(), "所有控制器配置完成"); 
-
-    std::array<float, 2> target_L0 = {0.20, 0.20};
-
-    while(rclcpp::ok()){
-      /**/
-      if (params_changed_.load()) {
-        reCfgControllers();
-        params_changed_.store(false);
-      }
-
-      double period_sec = 1.0 / ctrl_params.control_frequency;
-
-      /*update body state*/
-      robot_.updateBodyPose(imu_state_->getRPY(), imu_state_->getGyroscope(), imu_state_->getAccelerometer());
-      /*update joint state*/
-      robot_.updateAllJointState(*joints_state_);
-      /*updata remote control data*/
-      
-      /*forward kinematics*/
-      std::array<float, 2> rev_phi1, rev_phi4, rev_phi0, rev_L0;
-      rev_phi1[0] = robot_.getHipJoints()[0].q;		// joint space map to fivelink joint frame
-      rev_phi4[0] = robot_.getHipJoints()[1].q;
-      rev_phi1[1] = robot_.getHipJoints()[2].q;
-      rev_phi4[1] = robot_.getHipJoints()[3].q;
-      robot_.forwardKinematics(rev_phi1, rev_phi4, rev_phi0, rev_L0, true);
-
-      /*forward dynamics*/
-      std::array<float, 2> rev_torqueA, rev_torqueE, rev_Tp, rev_F;
-      rev_torqueA[0] = robot_.getHipJoints()[0].tau;
-      rev_torqueE[0] = robot_.getHipJoints()[1].tau;
-      rev_torqueA[1] = robot_.getHipJoints()[2].tau;
-      rev_torqueE[1] = robot_.getHipJoints()[3].tau;
-      robot_.forwardDynamics(rev_torqueA, rev_torqueE, rev_Tp, rev_F, true);
-
-      /**/
-      std::array<float, 2> rev_alpha, rev_theta;
-      rev_alpha[0] = robot_.getVMCJointFrames()[0].alpha;
-      rev_alpha[1] = robot_.getVMCJointFrames()[1].alpha;
-      rev_theta[0] = robot_.getVMCJointFrames()[0].theta;
-      rev_theta[1] = robot_.getVMCJointFrames()[1].theta;   
-      state_estimator_.update(rev_alpha, rev_theta, rev_L0);
-
-      /*XV Estimate*/
-      std::array<float, 2> w_ecd;
-      w_ecd[0] = robot_.getWheelJoints()[0].dq;
-      w_ecd[1] = robot_.getWheelJoints()[1].dq;;
-      state_estimator_.estimateVelocity(
-        w_ecd, 
-        robot_.getBodyWorldFrame().a[0],
-        robot_.getBodyWorldFrame().rpy[1],
-        robot_.getConfig().wheel_link[0].lengthOrRadius
-      );
-
-      /*Fn Estimate*/
-      state_estimator_.estimateForce(
-        rev_F,
-        rev_Tp,
-        robot_.getBodyWorldFrame().a[2] - 9.8,
-        robot_.getConfig().wheel_link[0].mass
-      );
-
-      /*lqr Control*/
-      LQRController6x2::StateVector lqr_xd;
-      std::array<LQRController6x2::StateVector, 2> lqr_x;
-      for(size_t index = 0; index < 2; index++){
-        lqr_x[index](0) = robot_.getVMCJointFrames()[index].theta; 
-        lqr_x[index](1) = (
-           robot_.getVMCJointFrames()[index].theta_history[0] 
-          -robot_.getVMCJointFrames()[index].theta_history[1]
-        )/period_sec; 
-        lqr_x[index](2) = state_estimator_.getVelocityEstimate().x_filter;
-        lqr_x[index](3) = state_estimator_.getVelocityEstimate().v_filter;
-        lqr_x[index](4) = -robot_.getBodyWorldFrame().rpy[1];
-        lqr_x[index](5) = -robot_.getBodyWorldFrame().w[1];
-        /*load lqr k table*/
-        lqr_controller_.updateKFormLegLength(index, rev_L0[index]);
-        if(0 && state_estimator_.detectGround()){
-          // lqr_x[index](0) = 0;  //chassis_ctrl_.target_x[2];
-          // lqr_x[index](1) = 0;  //chassis_ctrl_.target_x[3];
-          lqr_x[index](2) = 0;  //chassis_ctrl_.target_x[2];
-          lqr_x[index](3) = 0;  //chassis_ctrl_.target_x[3];
-          state_estimator_.corverVelocityEstimate(0, 0);
-          
-          // lqr_controller_.setGainMatrix(index, 0, 0, 0);
-          // lqr_controller_.setGainMatrix(index, 0, 1, 0);
-          lqr_controller_.setGainMatrix(index, 0, 2, 0);
-          lqr_controller_.setGainMatrix(index, 0, 3, 0);
-          // lqr_controller_.setGainMatrix(index, 0, 4, 0);
-          // lqr_controller_.setGainMatrix(index, 0, 5, 0);
-          // lqr_controller_.setGainMatrix(index, 1, 0, 0);
-          // lqr_controller_.setGainMatrix(index, 1, 1, 0);
-          lqr_controller_.setGainMatrix(index, 1, 2, 0);
-          lqr_controller_.setGainMatrix(index, 1, 3, 0);
-          // lqr_controller_.setGainMatrix(index, 1, 4, 0);
-          // lqr_controller_.setGainMatrix(index, 1, 5, 0);
-        }else{
-
-        }
-        
-      }
-      auto lqr_u = lqr_controller_.calculate(lqr_xd, lqr_x);
-
-      /*leg control*/
-      auto leg_u = leg_controller_.calculate(
-        target_L0, 
-        rev_L0, 
-        0, 
-        robot_.getBodyWorldFrame().rpy[0], 
-        rev_theta, 
-        rev_phi0,
-        robot_.getConfig().body_link.mass*G
-      );
-
-      /*body yaw rotate control*/
-      std::array<float, 2> rotate_t = {0};  		// [PID]
-      // rotate_t[0] = rotate_controller_.calculate(0, robot_.getBodyWorldFrame().w[2]);
-      // rotate_t[1] = -rotate_t[0];
-
-      /*inverse dynamics*/
-      std::array<float, 2> set_Tp, set_F, set_T, set_torqueA, set_torqueE;
-      for(int i = 0; i < 2 ;i++)
-      {
-
-        set_Tp[i] = lqr_u[i](1) + leg_u.compensation_tp[i];
-        set_F[i]	= leg_u.F[i];
-        set_T[i] = lqr_u[i](0) + rotate_t[i];
-      }
-      robot_.inverseDynamics(set_Tp, set_F, set_torqueA, set_torqueE);
-
-
-      /*PT-Mix Control*/
-      // limit the q-v-t value
-      for(int i = 0; i < 2; i++){
-        if(set_torqueA[i] > 50.0f){
-          set_torqueA[i] = 50.0f;
-        }else if(set_torqueA[i] <-50.0f){
-          set_torqueA[i] = -50.0f;
-        }
-        if(set_torqueE[i] > 50.0f){
-          set_torqueE[i] = 50.0f;
-        }else if(set_torqueE[i] <-50.0f){
-          set_torqueE[i] = -50.0f;
-        }
-
-        if(set_T[i] > 5.0f){
-          set_T[i] = 5.0f;
-        }else if(set_T[i] <-5.0f){
-          set_T[i] = -5.0f;
-        }
-      }
-
-
-      std::array<float, 6> set_joints_p = {0};
-      std::array<float, 6> set_joints_v = {0};
-      std::array<float, 6> set_joints_t = {
-        set_torqueA[0],
-        set_torqueE[0],
-        set_T[0],
-        set_torqueA[1],
-        set_torqueE[1],
-        set_T[1],
-      };
-      for(int i = 0; i < 6; i++){
-
-        set_joints_p[i] = (robot_.getConfig().joints[i].invert_pos ? -1 : 1) * (set_joints_p[i] - robot_.getConfig().joints[i].pos_offset);
-        set_joints_v[i] = (robot_.getConfig().joints[i].invert_vel ? -1 : 1) * set_joints_v[i];
-        set_joints_t[i] = (robot_.getConfig().joints[i].invert_torque ? -1 : 1) * set_joints_t[i];
-        
-        joints_cmd_->setMode(i, JointCmdInterface::MODE_MIT);
-        joints_cmd_->setPosition(i, set_joints_p[i]);
-        joints_cmd_->setVelocity(i, set_joints_v[i]);
-        joints_cmd_->setEffort(i, set_joints_t[i]);
-        joints_cmd_->setKp(i, 0);
-        joints_cmd_->setKd(i, 0);
-      }
-
-      std::chrono::duration<double> period(period_sec);
-      std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::microseconds>(period));
+    void reCfgControllers() {
+        std::lock_guard<std::mutex> lock(param_mutex_);
+        auto& p = config_manager_->getControllerParams();
+        lqr_controller_.setConfig(p.lqr);
+        leg_controller_.setConfig(p.leg_control);
+        rotate_controller_.setConfig(p.rotate);
+        state_estimator_.setConfig(p.state_estimator);
+        RCLCPP_INFO(get_logger(), "控制器参数已更新");
     }
-  }
 
-  /*参数管理对象*/
-  std::unique_ptr<ChassisConfigManager> config_manager_;
-  std::atomic<bool> params_changed_{false};
-  std::mutex param_mutex_;
+    // ================================================================
+    //  关节控制实现
+    //  这些函数在 controlLoop 的 switch 里每帧调用
+    // ================================================================
+    void jointZeroTau() {
+        for (int i = 0; i < 6; ++i) {
+            joints_cmd_->setMode(i, JointCmdInterface::MODE_IDLE);
+            joints_cmd_->setPosition(i, 0);
+            joints_cmd_->setVelocity(i, 0);
+            joints_cmd_->setEffort(i, 0);
+            joints_cmd_->setKp(i, 0);
+            joints_cmd_->setKd(i, 0);
+        }
+    }
 
-  std::unique_ptr<IMUStateInterface> imu_state_;
-  std::unique_ptr<JointStateInterface> joints_state_;
-  std::unique_ptr<JointCmdInterface> joints_cmd_;
-  std::unique_ptr<ChassisCtrlInterface> chassis_ctrl_;
-  std::unique_ptr<ChassisStateInterface> chassis_state_;
+    void jointDamping() {
+        for (int i = 0; i < 6; ++i) {
+            joints_cmd_->setMode(i, JointCmdInterface::MODE_MIT);
+            joints_cmd_->setPosition(i, 0);
+            joints_cmd_->setVelocity(i, 0);
+            joints_cmd_->setEffort(i, 0);
+            joints_cmd_->setKp(i, 0);
+            joints_cmd_->setKd(i, 3);
+        }
+    }
 
-  rclcpp::Subscription<wheel_legged_msgs::msg::IMUState>::SharedPtr imu_state_sub_;
-  rclcpp::Subscription<wheel_legged_msgs::msg::JointStates>::SharedPtr joints_state_sub_;
-  rclcpp::Publisher<wheel_legged_msgs::msg::JointCmds>::SharedPtr joints_cmd_pub_;
-  rclcpp::Subscription<wheel_legged_msgs::msg::ChassisCtrl>::SharedPtr chassis_ctrl_sub_;
-  rclcpp::Publisher<wheel_legged_msgs::msg::ChassisState>::SharedPtr chassis_state_pub_;
-  rclcpp::TimerBase::SharedPtr joint_cmd_pubTimer_;
-  rclcpp::TimerBase::SharedPtr chassis_state_pubTimer_;
-  rclcpp::TimerBase::SharedPtr debug_timer_;
+    void jointCali() {
+        // TODO: 驱动髋关节到限位，设置零点偏移
+    }
 
-  /*joint 有限状态机*/
-  FSMEvent event_;
-  std::unique_ptr<JFSM> jfsm_;    
-  rclcpp::TimerBase::SharedPtr jfsm_timer_;
+    void jointReset() {
+        // TODO: 多阶段腿部复位
+    }
 
-  /*模型对象*/
-  WheelLeggedRobot robot_;
-  /*控制器对象*/
-  LQRController6x2 lqr_controller_;
-  LegController leg_controller_;
-  RotateController rotate_controller_;
-  StateEstimator state_estimator_;
-  /*控制线程对象*/
-  std::thread control_thread_;
+    void jointReady(double dt) {
+        robot_.updateBodyPose(imu_state_->getRPY(),
+                              imu_state_->getGyroscope(),
+                              imu_state_->getAccelerometer());
+        robot_.updateAllJointState(*joints_state_);
+
+        std::array<float, 2> phi1, phi4, phi0, L0;
+        phi1[0] = robot_.getHipJoints()[0].q;
+        phi4[0] = robot_.getHipJoints()[1].q;
+        phi1[1] = robot_.getHipJoints()[2].q;
+        phi4[1] = robot_.getHipJoints()[3].q;
+        robot_.forwardKinematics(phi1, phi4, phi0, L0, true);
+
+        std::array<float, 2> tA, tE, Tp, F;
+        tA[0] = robot_.getHipJoints()[0].tau;
+        tE[0] = robot_.getHipJoints()[1].tau;
+        tA[1] = robot_.getHipJoints()[2].tau;
+        tE[1] = robot_.getHipJoints()[3].tau;
+        robot_.forwardDynamics(tA, tE, Tp, F, true);
+
+        std::array<float, 2> alpha, theta;
+        alpha[0] = robot_.getVMCJointFrames()[0].alpha;
+        alpha[1] = robot_.getVMCJointFrames()[1].alpha;
+        theta[0] = robot_.getVMCJointFrames()[0].theta;
+        theta[1] = robot_.getVMCJointFrames()[1].theta;
+        state_estimator_.update(alpha, theta, L0);
+
+        std::array<float, 2> w_ecd;
+        w_ecd[0] = robot_.getWheelJoints()[0].dq;
+        w_ecd[1] = robot_.getWheelJoints()[1].dq;
+        state_estimator_.estimateVelocity(
+            w_ecd,
+            robot_.getBodyWorldFrame().a[0],
+            robot_.getBodyWorldFrame().rpy[1],
+            robot_.getConfig().wheel_link[0].lengthOrRadius);
+
+        state_estimator_.estimateForce(
+            F, Tp,
+            robot_.getBodyWorldFrame().a[2] - 9.8f,
+            robot_.getConfig().wheel_link[0].mass);
+
+        LQRController6x2::StateVector xd;
+        xd.setZero();
+        std::array<LQRController6x2::StateVector, 2> x;
+        for (int i = 0; i < 2; ++i) {
+            x[i](0) = robot_.getVMCJointFrames()[i].theta;
+            x[i](1) = (robot_.getVMCJointFrames()[i].theta_history[0]
+                      -robot_.getVMCJointFrames()[i].theta_history[1]) / dt;
+            x[i](2) = state_estimator_.getVelocityEstimate().x_filter;
+            x[i](3) = state_estimator_.getVelocityEstimate().v_filter;
+            x[i](4) = -robot_.getBodyWorldFrame().rpy[1];
+            x[i](5) = -robot_.getBodyWorldFrame().w[1];
+            lqr_controller_.updateKFormLegLength(i, L0[i]);
+        }
+        auto lqr_u = lqr_controller_.calculate(xd, x);
+
+        std::array<float, 2> target_L0 = {0.20f, 0.20f};
+        auto leg_u = leg_controller_.calculate(
+            target_L0, L0, 0,
+            robot_.getBodyWorldFrame().rpy[0],
+            theta, phi0,
+            robot_.getConfig().body_link.mass * G);
+        
+        std::array<float, 2> rotate_u = {0, 0};
+        rotate_u[0] = rotate_controller_.calculate(0, robot_.getBodyWorldFrame().w[2]);
+        rotate_u[1] = -rotate_u[0];
+
+        std::array<float, 2> set_Tp, set_F, set_T, set_tA, set_tE;
+        for (int i = 0; i < 2; ++i) {
+            set_Tp[i] = lqr_u[i](1) + leg_u.compensation_tp[i];
+            set_F[i]  = leg_u.F[i];
+            set_T[i]  = lqr_u[i](0) + rotate_u[i];
+        }
+        robot_.inverseDynamics(set_Tp, set_F, set_tA, set_tE);
+
+        // 力矩限幅
+        for (int i = 0; i < 2; ++i) {
+            set_tA[i] = std::clamp(set_tA[i], -50.0f, 50.0f);
+            set_tE[i] = std::clamp(set_tE[i], -50.0f, 50.0f);
+            set_T[i]  = std::clamp(set_T[i],   -5.0f,  5.0f);
+        }
+
+        std::array<float, 6> jp = {0};
+        std::array<float, 6> jv = {0};
+        // std::array<float, 6> jt = {0};
+        std::array<float, 6> jt = {
+            set_tA[0], set_tE[0], set_T[0],
+            set_tA[1], set_tE[1], set_T[1]
+        };
+
+        for (int i = 0; i < 6; ++i) {
+            jp[i] = (robot_.getConfig().joints[i].invert_pos     ? -1 : 1)
+                    * (jp[i] - robot_.getConfig().joints[i].pos_offset);
+            jv[i] = (robot_.getConfig().joints[i].invert_vel     ? -1 : 1) * jv[i];
+            jt[i] = (robot_.getConfig().joints[i].invert_torque  ? -1 : 1) * jt[i];
+
+            joints_cmd_->setMode(i, JointCmdInterface::MODE_MIT);
+            joints_cmd_->setPosition(i, jp[i]);
+            joints_cmd_->setVelocity(i, jv[i]);
+            joints_cmd_->setEffort(i, jt[i]);
+            joints_cmd_->setKp(i, 0);
+            joints_cmd_->setKd(i, 0);
+        }
+    }
+
+    // ================================================================
+    //  控制主循环
+    // ================================================================
+    void controlLoop() {
+        // 初始化模型和控制器
+        robot_.setConfig(config_manager_->getModelParams());
+        auto& p = config_manager_->getControllerParams();
+        lqr_controller_.setConfig(p.lqr);
+        leg_controller_.setConfig(p.leg_control);
+        rotate_controller_.setConfig(p.rotate);
+        state_estimator_.setConfig(p.state_estimator);
+        RCLCPP_INFO(get_logger(), "控制器初始化完成");
+
+        const double dt = 1.0 / p.control_frequency;
+
+        while (rclcpp::ok()) {
+            // 热更新参数
+            if (params_changed_.load()) {
+                reCfgControllers();
+                params_changed_.store(false);
+            }
+
+            // 自动错误检测（过流/通信丢失等由外部写 event_.error）
+            fsm_->checkAutoTransitions();
+
+            // 每帧根据当前状态持续执行对应控制
+            // onEnter/onExit 不在这里触发，只在 trigger/checkAutoTransitions 切换时触发
+            switch (fsm_->current()) {
+                case JFSMode::ZEROTAU:  jointZeroTau();   break;
+                case JFSMode::DAMPING:  jointDamping();   break;
+                case JFSMode::CALI:     jointCali();      break;
+                case JFSMode::RESET:    jointReset();     break;
+                case JFSMode::READY:    jointReady(dt);   break;
+            }
+
+            std::this_thread::sleep_for(
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::duration<double>(dt)));
+        }
+    }
+
+    // ── 配置 ──
+    std::unique_ptr<ChassisConfigManager> config_manager_;
+    std::atomic<bool> params_changed_{false};
+    std::mutex param_mutex_;
+
+    // ── 接口 ──
+    std::unique_ptr<IMUStateInterface>    imu_state_;
+    std::unique_ptr<JointStateInterface>  joints_state_;
+    std::unique_ptr<JointCmdInterface>    joints_cmd_;
+    std::unique_ptr<ChassisCtrlInterface> chassis_ctrl_;
+    std::unique_ptr<ChassisStateInterface>chassis_state_;
+
+    // ── FSM ──
+    FSMEvent                    event_;
+    std::unique_ptr<JointFSM>   fsm_;
+
+    // ── ROS2 ──
+    rclcpp::Subscription<wheel_legged_msgs::msg::IMUState>::SharedPtr     imu_state_sub_;
+    rclcpp::Subscription<wheel_legged_msgs::msg::JointStates>::SharedPtr  joints_state_sub_;
+    rclcpp::Subscription<wheel_legged_msgs::msg::ChassisCtrl>::SharedPtr  chassis_ctrl_sub_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr                fsm_trigger_sub_;
+    rclcpp::Publisher<wheel_legged_msgs::msg::JointCmds>::SharedPtr       joints_cmd_pub_;
+    rclcpp::Publisher<wheel_legged_msgs::msg::ChassisState>::SharedPtr    chassis_state_pub_;
+    rclcpp::TimerBase::SharedPtr joint_cmd_timer_;
+    rclcpp::TimerBase::SharedPtr chassis_state_timer_;
+
+    // rclcpp::TimerBase::SharedPtr debug_timer_;
+
+
+    // ── 模型和控制器 ──
+    WheelLeggedRobot    robot_;
+    LQRController6x2    lqr_controller_;
+    LegController       leg_controller_;
+    RotateController    rotate_controller_;
+    StateEstimator      state_estimator_;
+    std::thread         control_thread_;
 };
 
-int main(int argc, char** argv){
-  rclcpp::init(argc,argv);
-  auto node = std::make_shared<ChassisControlNode>("chassis_control_node");
-  rclcpp::spin(node);
-  rclcpp::shutdown();
-  return 0;
+int main(int argc, char** argv) {
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<ChassisControlNode>("chassis_control_node");
+    rclcpp::spin(node);
+    rclcpp::shutdown();
+    return 0;
 }

@@ -8,7 +8,7 @@
 
 #include <array>
 #include <cstddef>
-#include "jointFSM.hpp"
+#include "joint_fsm.hpp"
 #include "Model/WheelLeggedRobot.hpp"
 #include "Controller/LegController.hpp"
 #include "Controller/LQRController.hpp"
@@ -146,7 +146,7 @@ private:
             msg.leg_ctrl.compensation_roll.max_iout = cfg.max_iout;
             msg.leg_ctrl.compensation_roll.max_out  = cfg.max_out;
             msg.leg_ctrl.compensation_roll.set      = pid.getSet(); 
-            msg.leg_ctrl.compensation_roll.fdb      = pid.getError();
+            msg.leg_ctrl.compensation_roll.fdb      = pid.getFdb();
             msg.leg_ctrl.compensation_roll.p_out    = pid.getPOut();
             msg.leg_ctrl.compensation_roll.i_out    = pid.getIOut();
             msg.leg_ctrl.compensation_roll.d_out    = pid.getDOut();
@@ -162,7 +162,7 @@ private:
             msg.leg_ctrl.compensation_phi0.max_iout = cfg.max_iout;
             msg.leg_ctrl.compensation_phi0.max_out  = cfg.max_out;
             msg.leg_ctrl.compensation_phi0.set      = pid.getSet();
-            msg.leg_ctrl.compensation_phi0.fdb      = pid.getError();
+            msg.leg_ctrl.compensation_phi0.fdb      = pid.getFdb();
             msg.leg_ctrl.compensation_phi0.p_out    = pid.getPOut();
             msg.leg_ctrl.compensation_phi0.i_out    = pid.getIOut();
             msg.leg_ctrl.compensation_phi0.d_out    = pid.getDOut();
@@ -225,7 +225,8 @@ private:
         msg.rotate_ctrl.yaw_rotate.kd        = cfg.kd;
         msg.rotate_ctrl.yaw_rotate.max_iout  = cfg.max_iout;
         msg.rotate_ctrl.yaw_rotate.max_out   = cfg.max_out;
-        msg.rotate_ctrl.yaw_rotate.ki        = cfg.ki;
+        msg.rotate_ctrl.yaw_rotate.set      = pid.getSet();
+        msg.rotate_ctrl.yaw_rotate.fdb      = pid.getFdb();
         msg.rotate_ctrl.yaw_rotate.p_out     = pid.getPOut();
         msg.rotate_ctrl.yaw_rotate.i_out     = pid.getIOut();
         msg.rotate_ctrl.yaw_rotate.d_out     = pid.getDOut();

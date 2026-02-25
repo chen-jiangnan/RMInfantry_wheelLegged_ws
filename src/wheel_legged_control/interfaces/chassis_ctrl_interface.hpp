@@ -10,8 +10,7 @@
 #include <cstddef>
 #include <vector>
 #include <string>
-#include "jointFSM.hpp"
-#include <wheel_legged_msgs/msg/detail/chassis_ctrl__struct.hpp>
+#include "joint_fsm.hpp"
 #include "wheel_legged_msgs/msg/chassis_ctrl.hpp"
 
 
@@ -100,7 +99,33 @@ public:
         foot_jump_forces_[1] = msg.foot_jump_forces[1];
     }
 
-    void print() const;
+    void print() const {
+        auto modeStr = [](JFSMode m) -> std::string {
+            switch (m) {
+                case JFSMode::ZEROTAU: return "ZEROTAU";
+                case JFSMode::CALI:    return "CALI";
+                case JFSMode::DAMPING: return "DAMPING";
+                case JFSMode::RESET:   return "RESET";
+                case JFSMode::READY:   return "READY";
+                default:               return "UNKNOWN";
+            }
+        };
+    
+        std::cout << std::fixed << std::setprecision(4);
+        std::cout << "\n========== ChassisCtrl ==========\n";
+        std::cout << "  FSM Mode       : " << modeStr(joint_fsm_mode_) << "\n";
+        std::cout << "  Position       : " << std::setw(9) << position_   << " m\n";
+        std::cout << "  Velocity       : " << std::setw(9) << velocity_   << " m/s\n";
+        std::cout << "  Yaw Speed      : " << std::setw(9) << yaw_speed_  << " rad/s\n";
+        std::cout << "  Roll Euler     : " << std::setw(9) << roll_euler_ << " rad\n";
+        std::cout << "  Leg Lengths    : ["
+                  << std::setw(9) << leg_lengths_[0] << ", "
+                  << std::setw(9) << leg_lengths_[1] << "] m\n";
+        std::cout << "  Jump Forces    : ["
+                  << std::setw(9) << foot_jump_forces_[0] << ", "
+                  << std::setw(9) << foot_jump_forces_[1] << "] N\n";
+        std::cout << "=================================\n";
+    }
 
 private:
     JFSMode joint_fsm_mode_;
