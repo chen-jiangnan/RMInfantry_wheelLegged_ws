@@ -40,28 +40,28 @@ target_include_directories(hipnuc_device PUBLIC
 )
 
 
-# ================hardware_brige_node=========================
-add_executable(hardware_brige_node
-  src/hardware_brige_node.cpp
+# ================hardware_bridge_node=========================
+add_executable(hardware_bridge_node
+  src/hardware_bridge_node.cpp
 )
 
-target_include_directories(hardware_brige_node PUBLIC
+target_include_directories(hardware_bridge_node PUBLIC
   # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/common>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/devices>
   $<BUILD_INTERFACE:${USB2FDCAN_INCLUDE_DIR}>
   $<BUILD_INTERFACE:${HIPNUC_INCLUDE_DIR}>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(hardware_brige_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(hardware_bridge_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
-  hardware_brige_node
+  hardware_bridge_node
   "rclcpp"
   "wheel_legged_msgs"
   "sensor_msgs"
 )
 
 # 链接第三方库（使用find_library找到的路径）
-target_link_libraries(hardware_brige_node
+target_link_libraries(hardware_bridge_node
   wheel_legged_interfaces::wheel_legged_interfaces
   ${USB2FDCAN_LIB}
   hipnuc_device
@@ -70,7 +70,7 @@ target_link_libraries(hardware_brige_node
 
 # ==================== 安装 ====================
 # 安装可执行文件
-install(TARGETS hardware_brige_node
+install(TARGETS hardware_bridge_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
