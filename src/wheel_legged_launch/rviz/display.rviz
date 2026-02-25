@@ -106,7 +106,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        left_frition_wheel_link:
+        left_friction_wheel_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -136,7 +136,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        right_frition_wheel_link:
+        right_friction_wheel_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false

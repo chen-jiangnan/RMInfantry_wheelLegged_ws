@@ -1,98 +1,83 @@
+"""
+bringup.launch.py - 顶层启动文件
+
+用法:
+  ros2 launch wheel_legged_launch bringup.launch.py robot_type:=seriBot env_mode:=sim
+  ros2 launch wheel_legged_launch bringup.launch.py robot_type:=cyclBot env_mode:=real
+"""
+
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch_ros.actions import Node
-from launch.conditions import IfCondition
-from launch.conditions import IfCondition
-from launch.substitutions import PythonExpression
-from launch.actions import IncludeLaunchDescription
-import os
+from launch_ros.substitutions import FindPackageShare
+
 
 def generate_launch_description():
-    # Launch arguments
-    robot_type = LaunchConfiguration('robot_type', default='cyclBot')
-    env_mode   = LaunchConfiguration('env_mode', default='sim')
 
-    ld = LaunchDescription([
-        # 可通过命令行覆盖
-        DeclareLaunchArgument(
-            'robot_type', 
-            default_value='cyclBot',
-            description='机器人类型: cyclBot/serialBot'),
-        DeclareLaunchArgument(
-            'env_mode',
-            default_value='sim',
-            description='运行环境: sim/real')
-    ])
+    # ==================== 参数声明 ====================
 
-    launch_dir = os.path.dirname(__file__)
+    robot_type_arg = DeclareLaunchArgument(
+        'robot_type',
+        default_value='cyclBot',
+        description='机器人类型: cyclBot / seriBot'
+    )
+    env_mode_arg = DeclareLaunchArgument(
+        'env_mode',
+        default_value='sim',
+        description='运行环境: sim / real'
+    )
 
-    # ==== 环境节点 ====
-    sim_node = Node(
-        package='wheel_legged_sim',
-        executable='mujoco_sim',
-        name='sim_node',
-        output='screen',
+    robot_type = LaunchConfiguration('robot_type')
+    env_mode   = LaunchConfiguration('env_mode')
+
+    pkg_launch = FindPackageShare('wheel_legged_launch')
+
+    def sub_launch(filename):
+        return IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                PathJoinSubstitution([pkg_launch, 'launch', filename])
+            ),
+            launch_arguments={
+                'robot_type': robot_type,
+                'env_mode':   env_mode,
+            }.items()
+        )
+
+    # ==================== 环境节点：顶层根据 env_mode 切换 ====================
+
+    sim_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([pkg_launch, 'launch', 'simulation.launch.py'])
+        ),
+        launch_arguments={'robot_type': robot_type}.items(),
         condition=IfCondition(PythonExpression(["'", env_mode, "' == 'sim'"]))
     )
-    ld.add_action(sim_node)
 
-    hw_node = Node(
-        package='wheel_legged_hw',
-        executable='hardware_bridge',
-        name='hw_node',
-        output='screen',
+    hw_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([pkg_launch, 'launch', 'hardware.launch.py'])
+        ),
         condition=IfCondition(PythonExpression(["'", env_mode, "' == 'real'"]))
     )
-    ld.add_action(hw_node)
 
+    # ==================== 组装 ====================
 
-    # 控制节点
-    control_launches = ['chassis_control', 'gimbal_control', 'shoot_control', 'user_control']
-    for node_name in control_launches:
-        launch_file = os.path.join(launch_dir, f'{node_name}.launch.py')
-        ld.add_action(
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(launch_file),
-                launch_arguments={'robot_type': robot_type, 'run_mode': env_mode}.items()
-            )
-        )
-    
-    # joystick 节点
-    ld.add_action(
-        Node(
-            package='joy',
-            executable='joy_node',
-            name='joy_node',
-            output='screen'
-        )
-    )
+    return LaunchDescription([
+        robot_type_arg,
+        env_mode_arg,
 
-    # plotjuggler节点
-    plotjuggler_config_file = os.path.join(launch_dir, '..', 'plotjuggler', 'plotjuggler.xml')
-    ld.add_action(
-        Node(
-            package='plotjuggler',
-            executable='plotjuggler',
-            name='plotjuggler',
-            arguments=['-d', plotjuggler_config_file],
-            output='screen'
-        )
-    )
+        # 根据 env_mode 只启动其中一个
+        sim_launch,
+        hw_launch,
 
-    # RViz 节点
-    rviz_config_file = os.path.join(launch_dir, '..', 'rviz', 'display.rviz')
-    ld.add_action(
-        Node(
-            package='rviz2',
-            executable='rviz2',
-            name='rviz2',
-            arguments=['-d', rviz_config_file],
-            output='screen'
-        )
-    )
+        # 控制节点（sim/real 下都运行）
+        sub_launch('chassis_control.launch.py'),
+        # sub_launch('gimbal_control.launch.py'),
+        # sub_launch('shoot_control.launch.py'),
+        # sub_launch('user_control.launch.py'),
 
-    return ld
-
-
+        # 工具
+        sub_launch('display.launch.py'),
+    ])

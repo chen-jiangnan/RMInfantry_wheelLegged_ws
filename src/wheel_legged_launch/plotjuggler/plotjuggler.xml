@@ -1,180 +1,342 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <root>
- <tabbed_widget name="Main Window" parent="main_window">
-  <Tab tab_name="lqr" containers="1">
+ <tabbed_widget parent="main_window" name="Main Window">
+  <Tab containers="1" tab_name="lqr">
    <Container>
-    <DockSplitter count="2" orientation="-" sizes="0.647255;0.352745">
-     <DockSplitter count="2" orientation="-" sizes="0.5;0.5">
-      <DockArea name="...">
-       <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-        <range bottom="-983.578589" left="1771408608.403537" top="23.989722" right="1771408613.403526"/>
-        <limitY/>
-        <curve name="/sport/chassisState/lqr_ctrl/xd_r[2]" color="#f14cc1"/>
-        <curve name="/sport/chassisState/lqr_ctrl/x_l[2]" color="#17becf"/>
-        <curve name="/sport/chassisState/lqr_ctrl/x_r[2]" color="#bcbd22"/>
-       </plot>
-      </DockArea>
-      <DockArea name="...">
-       <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-        <range bottom="-19.919339" left="1771408608.403537" top="0.507906" right="1771408613.403526"/>
-        <limitY/>
-        <curve name="/sport/chassisState/lqr_ctrl/xd_r[3]" color="#9467bd"/>
-        <curve name="/sport/chassisState/lqr_ctrl/x_r[3]" color="#1f77b4"/>
-        <curve name="/sport/chassisState/lqr_ctrl/x_l[3]" color="#d62728"/>
-       </plot>
-      </DockArea>
-     </DockSplitter>
-     <DockSplitter count="2" orientation="|" sizes="0.500469;0.499531">
-      <DockArea name="...">
-       <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-        <range bottom="-20695.622998" left="1771408608.403537" top="-19607.808643" right="1771408613.403526"/>
-        <limitY/>
-        <curve name="/sport/chassisState/lqr_ctrl/u_l[0]" color="#1f77b4"/>
-        <curve name="/sport/chassisState/lqr_ctrl/u_r[0]" color="#1ac938"/>
-       </plot>
-      </DockArea>
-      <DockArea name="...">
-       <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-        <range bottom="12695.380762" left="1771408608.403537" top="13393.634863" right="1771408613.403526"/>
-        <limitY/>
-        <curve name="/sport/chassisState/lqr_ctrl/u_l[1]" color="#d62728"/>
-        <curve name="/sport/chassisState/lqr_ctrl/u_r[1]" color="#ff7f0e"/>
-       </plot>
-      </DockArea>
-     </DockSplitter>
-    </DockSplitter>
-   </Container>
-  </Tab>
-  <Tab tab_name="leg" containers="1">
-   <Container>
-    <DockSplitter count="1" orientation="-" sizes="1">
-     <DockSplitter count="2" orientation="|" sizes="0.654171;0.345829">
-      <DockSplitter count="3" orientation="-" sizes="0.333333;0.333333;0.333333">
-       <DockArea name="Fn">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-22.706334" left="1771408608.403537" top="-10.496448" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/leg_ctrl/f[0]" color="#1ac938"/>
-         <curve name="/sport/chassisState/leg_ctrl/f[1]" color="#ff7f0e"/>
-        </plot>
-       </DockArea>
-       <DockArea name="L0">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="0.198189" left="1771408608.403537" top="0.274263" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/leg_ctrl/spring_damping[0]/set" color="#f14cc1"/>
-         <curve name="/sport/chassisState/leg_ctrl/spring_damping[1]/set" color="#9467bd"/>
-         <curve name="/sport/chassisState/leg_ctrl/spring_damping[1]/fdb" color="#17becf"/>
-         <curve name="/sport/chassisState/leg_ctrl/spring_damping[0]/fdb" color="#bcbd22"/>
-        </plot>
-       </DockArea>
-       <DockArea name="ground_signal">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-0.100000" left="1771408608.403537" top="0.100000" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/state_est/fn_est/ground_signal" color="#1f77b4"/>
-        </plot>
-       </DockArea>
-      </DockSplitter>
-      <DockSplitter count="2" orientation="-" sizes="0.50416;0.49584">
-       <DockArea name="phi0">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-0.012080" left="1771408608.403537" top="0.014043" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/leg_ctrl/compensation_phi0/set" color="#1f77b4"/>
-         <curve name="/sport/chassisState/leg_ctrl/compensation_phi0/fdb" color="#d62728"/>
-        </plot>
-       </DockArea>
-       <DockArea name="roll">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-0.023960" left="1771408608.403537" top="0.021344" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/leg_ctrl/compensation_roll/set" color="#f14cc1"/>
-         <curve name="/sport/chassisState/leg_ctrl/compensation_roll/fdb" color="#9467bd"/>
-        </plot>
-       </DockArea>
-      </DockSplitter>
-     </DockSplitter>
-    </DockSplitter>
-   </Container>
-  </Tab>
-  <Tab tab_name="est" containers="1">
-   <Container>
-    <DockSplitter count="1" orientation="-" sizes="1">
-     <DockSplitter count="2" orientation="|" sizes="0.500469;0.499531">
-      <DockSplitter count="3" orientation="-" sizes="0.333333;0.333333;0.333333">
-       <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="434.516868" left="1771408608.403537" top="453.301095" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/state_est/fn_est/fn[0]" color="#d62728"/>
-         <curve name="/sport/chassisState/state_est/fn_est/fn[1]" color="#1ac938"/>
-        </plot>
-       </DockArea>
-       <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-106.349128" left="1771408608.403537" top="130.822074" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/state_est/fn_est/ddot_zw[0]" color="#f14cc1"/>
-         <curve name="/sport/chassisState/state_est/fn_est/ddot_zw[1]" color="#ff7f0e"/>
-        </plot>
-       </DockArea>
-       <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-11.222470" left="1771408608.403537" top="34.549964" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/state_est/fn_est/ddot_zb" color="#9467bd"/>
-        </plot>
-       </DockArea>
-      </DockSplitter>
-      <DockSplitter count="3" orientation="-" sizes="0.333333;0.333333;0.333333">
-       <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-960.531854" left="1771408608.403537" top="-920.926398" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/state_est/xv_est/x_filter" color="#17becf"/>
-        </plot>
-       </DockArea>
-       <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-19.919339" left="1771408608.403537" top="0.507906" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/state_est/xv_est/v_filter" color="#bcbd22"/>
-        </plot>
-       </DockArea>
-       <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-         <range bottom="-22.225077" left="1771408608.403537" top="0.668066" right="1771408613.403526"/>
-         <limitY/>
-         <curve name="/sport/chassisState/state_est/xv_est/dot_xw[0]" color="#1f77b4"/>
-         <curve name="/sport/chassisState/state_est/xv_est/dot_xw[1]" color="#d62728"/>
-        </plot>
-       </DockArea>
-      </DockSplitter>
-     </DockSplitter>
-    </DockSplitter>
-   </Container>
-  </Tab>
-  <Tab tab_name="kalman" containers="1">
-   <Container>
-    <DockSplitter count="1" orientation="-" sizes="1">
+    <DockSplitter sizes="0.333948;0.332103;0.333948" count="3" orientation="-">
      <DockArea name="...">
-      <plot mode="TimeSeries" flip_x="false" line_width="1.0" flip_y="false">
-       <range bottom="0.000000" left="0.000000" top="1.000000" right="1.000000"/>
+      <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+       <range bottom="-0.000047" top="0.000001" left="1771948163.791143" right="1771948168.790215"/>
+       <limitY/>
+       <curve color="#1f77b4" name="/highlevel/chassisState/lqr_ctrl/x_l[2]"/>
+       <curve color="#1ac938" name="/highlevel/chassisState/lqr_ctrl/xd_l[2]"/>
+       <curve color="#f14cc1" name="/highlevel/chassisState/lqr_ctrl/x_r[2]"/>
+      </plot>
+     </DockArea>
+     <DockArea name="...">
+      <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+       <range bottom="-0.001681" top="0.001446" left="1771948163.791143" right="1771948168.790215"/>
+       <limitY/>
+       <curve color="#d62728" name="/highlevel/chassisState/lqr_ctrl/x_l[3]"/>
+       <curve color="#ff7f0e" name="/highlevel/chassisState/lqr_ctrl/xd_l[3]"/>
+       <curve color="#9467bd" name="/highlevel/chassisState/lqr_ctrl/x_r[3]"/>
+      </plot>
+     </DockArea>
+     <DockSplitter sizes="0.502538;0.497462" count="2" orientation="|">
+      <DockArea name="...">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-18.750849" top="-18.225580" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#17becf" name="/highlevel/chassisState/lqr_ctrl/u_l[0]"/>
+        <curve color="#1f77b4" name="/highlevel/chassisState/lqr_ctrl/u_r[0]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-28.622571" top="-28.475354" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#bcbd22" name="/highlevel/chassisState/lqr_ctrl/u_l[1]"/>
+        <curve color="#d62728" name="/highlevel/chassisState/lqr_ctrl/u_r[1]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="leg">
+   <Container>
+    <DockSplitter sizes="0.333948;0.332103;0.333948" count="3" orientation="-">
+     <DockSplitter sizes="0.71489;0.28511" count="2" orientation="|">
+      <DockArea name="spring_damping">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="0.125322" top="0.201821" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/highlevel/chassisState/leg_ctrl/spring_damping[1]/set"/>
+        <curve color="#d62728" name="/highlevel/chassisState/leg_ctrl/spring_damping[0]/set"/>
+        <curve color="#f14cc1" name="/highlevel/chassisState/leg_ctrl/spring_damping[0]/fdb"/>
+        <curve color="#9467bd" name="/highlevel/chassisState/leg_ctrl/spring_damping[1]/fdb"/>
+       </plot>
+      </DockArea>
+      <DockArea name="out">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="72.805425" top="72.858385" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#1ac938" name="/highlevel/chassisState/leg_ctrl/spring_damping[1]/out"/>
+        <curve color="#ff7f0e" name="/highlevel/chassisState/leg_ctrl/spring_damping[0]/out"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.593063;0.406937" count="2" orientation="|">
+      <DockArea name="compensation_phi0">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.000187" top="0.000271" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#17becf" name="/highlevel/chassisState/leg_ctrl/compensation_phi0/set"/>
+        <curve color="#bcbd22" name="/highlevel/chassisState/leg_ctrl/compensation_phi0/fdb"/>
+       </plot>
+      </DockArea>
+      <DockArea name="phi0">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="1.565347" top="1.565658" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#9467bd" name="/highlevel/chassisState/robot_state/fivelink_jointframe[0]/phi[0]"/>
+        <curve color="#17becf" name="/highlevel/chassisState/robot_state/fivelink_jointframe[1]/phi[0]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.593063;0.406937" count="2" orientation="|">
+      <DockArea name="F">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="169.233133" top="169.274421" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#d62728" name="/highlevel/chassisState/leg_ctrl/f[0]"/>
+        <curve color="#1ac938" name="/highlevel/chassisState/leg_ctrl/f[1]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="Tp">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.100000" top="0.100000" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#ff7f0e" name="/highlevel/chassisState/leg_ctrl/compensation_tp[0]"/>
+        <curve color="#f14cc1" name="/highlevel/chassisState/leg_ctrl/compensation_tp[1]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="robot">
+   <Container>
+    <DockSplitter sizes="0.500921;0.499079" count="2" orientation="-">
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="0.127142" top="0.127194" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/highlevel/chassisState/robot_state/fivelink_jointframe[0]/l0"/>
+        <curve color="#1ac938" name="/highlevel/chassisState/robot_state/fivelink_jointframe[1]/l0"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="0.000000" top="1.000000" left="0.000000" right="1.000000"/>
+        <limitY/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="1.565347" top="1.565658" left="1771948163.791143" right="1771948168.790215"/>
+        <limitY/>
+        <curve color="#d62728" name="/highlevel/chassisState/robot_state/fivelink_jointframe[0]/phi[0]"/>
+        <curve color="#ff7f0e" name="/highlevel/chassisState/robot_state/fivelink_jointframe[1]/phi[0]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="0.000000" top="1.000000" left="0.000000" right="1.000000"/>
+        <limitY/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="cjoint_q">
+   <Container>
+    <DockSplitter sizes="0.333948;0.332103;0.333948" count="3" orientation="-">
+     <DockSplitter sizes="0.500846;0.499154" count="2" orientation="|">
+      <DockArea name="left_front_hip">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.023331" top="-0.022230" left="1771948163.792427" right="1771948168.790439"/>
+        <limitY/>
+        <curve color="#bcbd22" name="/lowlevel/chassisJointState/joint_states[0]/q"/>
+       </plot>
+      </DockArea>
+      <DockArea name="right_front_hip">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="0.022054" top="0.023189" left="1771948163.792427" right="1771948168.790439"/>
+        <limitY/>
+        <curve color="#1ac938" name="/lowlevel/chassisJointState/joint_states[3]/q"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.502538;0.497462" count="2" orientation="|">
+      <DockArea name="left_rear_hip">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="0.002889" top="0.003024" left="1771948163.792427" right="1771948168.790439"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/lowlevel/chassisJointState/joint_states[1]/q"/>
+       </plot>
+      </DockArea>
+      <DockArea name="right_rear_hip">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.003037" top="-0.002878" left="1771948163.792427" right="1771948168.790439"/>
+        <limitY/>
+        <curve color="#ff7f0e" name="/lowlevel/chassisJointState/joint_states[4]/q"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.502538;0.497462" count="2" orientation="|">
+      <DockArea name="left_wheel">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="0.379130" top="0.380388" left="1771948163.792427" right="1771948168.790439"/>
+        <limitY/>
+        <curve color="#d62728" name="/lowlevel/chassisJointState/joint_states[2]/q"/>
+       </plot>
+      </DockArea>
+      <DockArea name="right_wheel">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.380274" top="-0.379166" left="1771948163.792427" right="1771948168.790439"/>
+        <limitY/>
+        <curve color="#f14cc1" name="/lowlevel/chassisJointState/joint_states[5]/q"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="cjoint_dq">
+   <Container>
+    <DockSplitter sizes="0.333948;0.332103;0.333948" count="3" orientation="-">
+     <DockSplitter sizes="0.500846;0.499154" count="2" orientation="|">
+      <DockArea name="left_front_hip">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.030461" top="0.046958" left="1771948163.792210" right="1771948168.791149"/>
+        <limitY/>
+        <curve color="#9467bd" name="/lowlevel/chassisJointState/joint_states[0]/dq"/>
+        <curve color="#ff7f0e" name="/lowlevel/chassisJointCmd/joint_cmds[0]/dq"/>
+       </plot>
+      </DockArea>
+      <DockArea name="right_front_hip">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.046008" top="0.036195" left="1771948163.792210" right="1771948168.791149"/>
+        <limitY/>
+        <curve color="#d62728" name="/lowlevel/chassisJointState/joint_states[3]/dq"/>
+        <curve color="#17becf" name="/lowlevel/chassisJointCmd/joint_cmds[3]/dq"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.502538;0.497462" count="2" orientation="|">
+      <DockArea name="left_rear_hip">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.010045" top="0.005383" left="1771948163.792210" right="1771948168.791149"/>
+        <limitY/>
+        <curve color="#17becf" name="/lowlevel/chassisJointState/joint_states[1]/dq"/>
+        <curve color="#f14cc1" name="/lowlevel/chassisJointCmd/joint_cmds[1]/dq"/>
+       </plot>
+      </DockArea>
+      <DockArea name="right_rear_hip">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.007439" top="0.009907" left="1771948163.792210" right="1771948168.791149"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/lowlevel/chassisJointState/joint_states[4]/dq"/>
+        <curve color="#bcbd22" name="/lowlevel/chassisJointCmd/joint_cmds[4]/dq"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.502538;0.497462" count="2" orientation="|">
+      <DockArea name="left_wheel">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.069170" top="0.053669" left="1771948163.792210" right="1771948168.791149"/>
+        <limitY/>
+        <curve color="#bcbd22" name="/lowlevel/chassisJointState/joint_states[2]/dq"/>
+        <curve color="#9467bd" name="/lowlevel/chassisJointCmd/joint_cmds[2]/dq"/>
+       </plot>
+      </DockArea>
+      <DockArea name="right_wheel">
+       <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+        <range bottom="-0.052070" top="0.062649" left="1771948163.792210" right="1771948168.791149"/>
+        <limitY/>
+        <curve color="#1ac938" name="/lowlevel/chassisJointState/joint_states[5]/dq"/>
+        <curve color="#1f77b4" name="/lowlevel/chassisJointCmd/joint_cmds[5]/dq"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="cjoint_tau">
+   <Container>
+    <DockSplitter sizes="1" count="1" orientation="-">
+     <DockSplitter sizes="0.518613;0.481387" count="2" orientation="|">
+      <DockSplitter sizes="0.333948;0.332103;0.333948" count="3" orientation="-">
+       <DockArea name="left_front_hip">
+        <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+         <range bottom="-0.100000" top="0.100000" left="1771948163.792210" right="1771948168.791149"/>
+         <limitY/>
+         <curve color="#d62728" name="/lowlevel/chassisJointCmd/joint_cmds[0]/tau"/>
+         <curve color="#bcbd22" name="/lowlevel/chassisJointState/joint_states[0]/tau"/>
+        </plot>
+       </DockArea>
+       <DockArea name="left_rear_hip">
+        <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+         <range bottom="-0.100000" top="0.100000" left="1771948163.792210" right="1771948168.791149"/>
+         <limitY/>
+         <curve color="#1ac938" name="/lowlevel/chassisJointCmd/joint_cmds[1]/tau"/>
+         <curve color="#1f77b4" name="/lowlevel/chassisJointState/joint_states[1]/tau"/>
+        </plot>
+       </DockArea>
+       <DockArea name="left_wheel">
+        <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+         <range bottom="-0.100000" top="0.100000" left="1771948163.792210" right="1771948168.791149"/>
+         <limitY/>
+         <curve color="#ff7f0e" name="/lowlevel/chassisJointCmd/joint_cmds[2]/tau"/>
+         <curve color="#1ac938" name="/lowlevel/chassisJointState/joint_states[2]/tau"/>
+        </plot>
+       </DockArea>
+      </DockSplitter>
+      <DockSplitter sizes="0.333948;0.332103;0.333948" count="3" orientation="-">
+       <DockArea name="right_front_hip">
+        <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+         <range bottom="-0.100000" top="0.100000" left="1771948163.792210" right="1771948168.791149"/>
+         <limitY/>
+         <curve color="#f14cc1" name="/lowlevel/chassisJointCmd/joint_cmds[3]/tau"/>
+         <curve color="#d62728" name="/lowlevel/chassisJointState/joint_states[3]/tau"/>
+        </plot>
+       </DockArea>
+       <DockArea name="right_rear_hip">
+        <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+         <range bottom="-0.100000" top="0.100000" left="1771948163.792210" right="1771948168.791149"/>
+         <limitY/>
+         <curve color="#9467bd" name="/lowlevel/chassisJointCmd/joint_cmds[4]/tau"/>
+         <curve color="#ff7f0e" name="/lowlevel/chassisJointState/joint_states[4]/tau"/>
+        </plot>
+       </DockArea>
+       <DockArea name="right_wheel">
+        <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+         <range bottom="-0.100000" top="0.100000" left="1771948163.792210" right="1771948168.791149"/>
+         <limitY/>
+         <curve color="#17becf" name="/lowlevel/chassisJointCmd/joint_cmds[5]/tau"/>
+         <curve color="#f14cc1" name="/lowlevel/chassisJointState/joint_states[5]/tau"/>
+        </plot>
+       </DockArea>
+      </DockSplitter>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="state">
+   <Container>
+    <DockSplitter sizes="1" count="1" orientation="-">
+     <DockArea name="...">
+      <plot flip_y="false" mode="TimeSeries" line_width="1.0" flip_x="false">
+       <range bottom="0.000000" top="1.000000" left="0.000000" right="1.000000"/>
        <limitY/>
       </plot>
      </DockArea>
     </DockSplitter>
    </Container>
   </Tab>
-  <currentTabIndex index="0"/>
+  <currentTabIndex index="2"/>
  </tabbed_widget>
  <use_relative_time_offset enabled="0"/>
  <!-- - - - - - - - - - - - - - - -->
  <!-- - - - - - - - - - - - - - - -->
  <Plugins>
   <plugin ID="DataLoad CSV">
-   <parameters delimiter="0" time_axis=""/>
+   <parameters time_axis="" delimiter="0"/>
   </plugin>
   <plugin ID="DataLoad MCAP"/>
   <plugin ID="DataLoad ROS2 bags">
@@ -192,7 +354,7 @@
    <max_array_size value="100"/>
    <boolean_strings_to_number value="true"/>
    <remove_suffix_from_strings value="true"/>
-   <selected_topics value="/simulation/IMUState;/simulation/chassisMotorCmd;/simulation/chassisMotorState;/sport/chassisState"/>
+   <selected_topics value="/highlevel/chassisCtrl;/highlevel/chassisState;/lowlevel/chassisJointCmd;/lowlevel/chassisJointState;/lowlevel/gimbalJointCmd;/lowlevel/gimbalJointState;/lowlevel/imuState;/lowlevel/shootJointCmd;/lowlevel/shootJointState"/>
   </plugin>
   <plugin ID="UDP Server"/>
   <plugin ID="WebSocket Server"/>
