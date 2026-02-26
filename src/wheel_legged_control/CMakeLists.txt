@@ -99,32 +99,33 @@ install(TARGETS chassis_control
 #   DESTINATION lib/${PROJECT_NAME})
 
 
-# # ================user_control=========================
-# add_executable(user_control
-#   src/user_control.cpp
-#   ${src_files}
-# )
-# target_include_directories(user_control PUBLIC
-#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/common>
-#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/config_manager>
-#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/fsm>
-#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interfaces>
-#   $<INSTALL_INTERFACE:include>)
-# target_compile_features(user_control PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-# ament_target_dependencies(
-#   user_control
-#   "rclcpp"
-#   "wheel_legged_msgs"
-#   "sensor_msgs"
-# )
-# target_link_libraries(user_control 
-#   Eigen3::Eigen
-#   yaml-cpp
-# )
+# ================user_control=========================
+add_executable(user_control
+  src/user_control.cpp
+  ${src_files}
+)
+target_include_directories(user_control PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/common>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/config_manager>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/fsm>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interfaces>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(user_control PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+ament_target_dependencies(
+  user_control
+  "rclcpp"
+  "wheel_legged_msgs"
+  "sensor_msgs"
+)
+target_link_libraries(user_control 
+  wheel_legged_interfaces::wheel_legged_interfaces
+  Eigen3::Eigen
+  yaml-cpp
+)
 
-# install(TARGETS user_control
-#   DESTINATION lib/${PROJECT_NAME})
+install(TARGETS user_control
+  DESTINATION lib/${PROJECT_NAME})
 
 
 

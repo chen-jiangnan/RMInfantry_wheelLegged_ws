@@ -253,6 +253,8 @@ private:
 
         LQRController6x2::StateVector xd;
         xd.setZero();
+        xd(2) = chassis_ctrl_->getPosition();
+        xd(3) = chassis_ctrl_->getVelocity();
         std::array<LQRController6x2::StateVector, 2> x;
         for (int i = 0; i < 2; ++i) {
             x[i](0) = robot_.getVMCJointFrames()[i].theta;
@@ -274,14 +276,20 @@ private:
             robot_.getConfig().body_link.mass * G);
         
         std::array<float, 2> rotate_u = {0, 0};
-        rotate_u[0] = rotate_controller_.calculate(0, robot_.getBodyWorldFrame().w[2]);
-        rotate_u[1] = -rotate_u[0];
+        rotate_u[1] = rotate_controller_.calculate(
+            chassis_ctrl_->getYawSpeed(), robot_.getBodyWorldFrame().w[2]);
+        rotate_u[0] = -rotate_u[1];
 
+        
         std::array<float, 2> set_Tp, set_F, set_T, set_tA, set_tE;
+        std::cout<<"========================="<<std::endl;
         for (int i = 0; i < 2; ++i) {
             set_Tp[i] = lqr_u[i](1) + leg_u.compensation_tp[i];
             set_F[i]  = leg_u.F[i];
             set_T[i]  = lqr_u[i](0) + rotate_u[i];
+            std::cout << "lqr_u[i](0):" << lqr_u[i](0) << std::endl;
+            std::cout << "rotate_u[i]:" << rotate_u[i] << std::endl;
+            std::cout << "set_T[i]:" << set_T[i] << std::endl;
         }
         robot_.inverseDynamics(set_Tp, set_F, set_tA, set_tE);
 
@@ -291,7 +299,8 @@ private:
             set_tE[i] = std::clamp(set_tE[i], -50.0f, 50.0f);
             set_T[i]  = std::clamp(set_T[i],   -5.0f,  5.0f);
         }
-
+        std::cout << "set_T[i]:" << set_T[0] << " "<< set_T[1]<< std::endl;
+        std::cout<<"========================="<<std::endl;
         std::array<float, 6> jp = {0};
         std::array<float, 6> jv = {0};
         // std::array<float, 6> jt = {0};
