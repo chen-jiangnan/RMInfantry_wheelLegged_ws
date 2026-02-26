@@ -1,5 +1,5 @@
 <mujoco model="Infantry_wheelLegged scene">
-  <include file="zt_2025_Infantry_wheelLeggedP_withShoot_s.xml" />
+  <include file="wheelLegged_cyclBot.xml" />
 
   <statistic center="0 0 0.4" extent="0.8" />
 
