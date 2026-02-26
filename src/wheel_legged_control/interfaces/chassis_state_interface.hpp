@@ -201,13 +201,17 @@ private:
             msg.lqr_ctrl.x_l[i] =  x_l(i);
             msg.lqr_ctrl.xd_l[i] =  xd_l(i);
             msg.lqr_ctrl.err_l[i] =  err_l(i);
-            msg.lqr_ctrl.u_l[i] =  u_l(i);
-
             msg.lqr_ctrl.x_r[i] =  x_r(i);
             msg.lqr_ctrl.xd_r[i] =  xd_r(i);
             msg.lqr_ctrl.err_r[i] =  err_r(i);
+            
+        }
+
+        for(int i = 0; i < 2; i++){
+            msg.lqr_ctrl.u_l[i] =  u_l(i);
             msg.lqr_ctrl.u_r[i] =  u_r(i);
         }
+
 
         for(int i = 0; i < 12; i++){
             msg.lqr_ctrl.k_l[i] =  k_l(i);
