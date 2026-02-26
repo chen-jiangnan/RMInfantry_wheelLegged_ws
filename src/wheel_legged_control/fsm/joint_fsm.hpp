@@ -112,8 +112,11 @@ public:
             }
             return doTransit(t.to);
         }
-        std::cout << "[FSM] 当前状态 [" << stateName(current_)
-                  << "] 不支持触发: " << event_name << "\n";
+        
+        if ( stateName(current_) != event_name){
+            std::cout << "[FSM] 当前状态 [" << stateName(current_)
+            << "] 不支持触发: " << event_name << "\n";
+        }
         return false;
     }
 
@@ -138,11 +141,11 @@ public:
 
     static std::string stateName(JFSMode s) {
         switch (s) {
-            case JFSMode::ZEROTAU: return "ZEROTAU";
-            case JFSMode::CALI:    return "CALI";
-            case JFSMode::DAMPING: return "DAMPING";
-            case JFSMode::RESET:   return "RESET";
-            case JFSMode::READY:   return "READY";
+            case JFSMode::ZEROTAU: return "zerotau";
+            case JFSMode::CALI:    return "cali";
+            case JFSMode::DAMPING: return "damping";
+            case JFSMode::RESET:   return "reset";
+            case JFSMode::READY:   return "ready";
         }
         return "UNKNOWN";
     }
