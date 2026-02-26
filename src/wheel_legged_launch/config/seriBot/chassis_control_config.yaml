@@ -88,25 +88,25 @@ chassis_control_node:
 
       # Roll角补偿控制器
       roll_compensation:
-        kp: 50.0
+        kp: 500.0
         ki: 0.0
-        kd: 10.0
+        kd: 100.0
         max_out: 300.0
         max_iout: 300.0
 
       # Phi0补偿控制器
       phi0_compensation:
-        kp: 1.0
-        ki: 0.0
-        kd: 4.0
+        kp: 20.0
+        ki: 0.1
+        kd: 10.0
         max_out: 10.0
         max_iout: 10.0
 
     # ==================== 旋转控制器 ====================
     rotate_control:
-      kp: 1.0
+      kp: 2.0
       ki: 0.0
-      kd: 2.0
+      kd: 3.0
       max_out: 3.0
       max_iout: 3.0
 
