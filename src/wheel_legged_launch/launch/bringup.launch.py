@@ -76,7 +76,7 @@ def generate_launch_description():
         sub_launch('chassis_control.launch.py'),
         # sub_launch('gimbal_control.launch.py'),
         # sub_launch('shoot_control.launch.py'),
-        # sub_launch('user_control.launch.py'),
+        sub_launch('user_control.launch.py'),
 
         # 工具
         sub_launch('display.launch.py'),
