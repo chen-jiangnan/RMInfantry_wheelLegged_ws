@@ -32,11 +32,12 @@ void ChassisConfigManager::declareParameters() {
     node_->declare_parameter("jfsm.cali.velocity",             0.5);
     node_->declare_parameter("jfsm.cali.torque_threshold",     8.0);
     node_->declare_parameter("jfsm.cali.timeout",              5.0);
-    node_->declare_parameter("jfsm.reset.target_leg_length",   0.20);
-    node_->declare_parameter("jfsm.reset.target_leg_angle",    0.0);
-    node_->declare_parameter("jfsm.reset.max_velocity",        0.3);
-    node_->declare_parameter("jfsm.reset.position_tolerance",  0.01);
-    
+    node_->declare_parameter("jfsm.reset.leg_l0_step",         0.005);
+    node_->declare_parameter("jfsm.reset.leg_phi0_step",       0.001);
+    node_->declare_parameter("jfsm.reset.state_up.l0",         0.395);
+    node_->declare_parameter("jfsm.reset.state_up.phi0",       2.416);
+    node_->declare_parameter("jfsm.reset.state_down.l0",       0.395);
+    node_->declare_parameter("jfsm.reset.state_down.phi0",     -0.008);  
     // ==================== LQR参数 ====================
     
     node_->declare_parameter("lqr.k_matrix.rows", 2);
@@ -107,12 +108,14 @@ void ChassisConfigManager::loadControllerParameters() {
     jfsm.cali.velocity         = node_->get_parameter("jfsm.cali.velocity").as_double();
     jfsm.cali.torque_threshold = node_->get_parameter("jfsm.cali.torque_threshold").as_double();
     jfsm.cali.timeout          = node_->get_parameter("jfsm.cali.timeout").as_double();
+ 
+    jfsm.reset.leg_l0_step         = node_->get_parameter("jfsm.reset.leg_l0_step").as_double();
+    jfsm.reset.leg_phi0_step       = node_->get_parameter("jfsm.reset.leg_phi0_step").as_double();
+    jfsm.reset.state_up.l0         = node_->get_parameter("jfsm.reset.state_up.l0").as_double();
+    jfsm.reset.state_up.phi0       = node_->get_parameter("jfsm.reset.state_up.phi0").as_double();
+    jfsm.reset.state_down.l0       = node_->get_parameter("jfsm.reset.state_down.l0").as_double();
+    jfsm.reset.state_down.phi0     = node_->get_parameter("jfsm.reset.state_down.phi0").as_double();
 
-    jfsm.reset.target_leg_length   = node_->get_parameter("jfsm.reset.target_leg_length").as_double();
-    jfsm.reset.target_leg_angle    = node_->get_parameter("jfsm.reset.target_leg_angle").as_double();
-    jfsm.reset.max_velocity        = node_->get_parameter("jfsm.reset.max_velocity").as_double();
-    jfsm.reset.position_tolerance  = node_->get_parameter("jfsm.reset.position_tolerance").as_double();
-    
     // ========== LQR ==========
     
     auto k_vec = node_->get_parameter("lqr.k_matrix.data").as_double_array();
