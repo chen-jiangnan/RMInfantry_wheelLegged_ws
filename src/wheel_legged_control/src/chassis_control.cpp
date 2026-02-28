@@ -12,7 +12,10 @@
 #include "wheel_legged_interfaces/joint_cmd_interface.hpp"
 #include "wheel_legged_msgs/msg/chassis_state.hpp"
 #include <array>
+#include <cmath>
 #include <memory>
+#include <rclcpp/logging.hpp>
+#include <yaml-cpp/emittermanip.h>
 #include "chassis_ctrl_interface.hpp"
 #include "chassis_state_interface.hpp"
 
@@ -114,7 +117,7 @@ private:
         if (!jfsm_cfg.require_cali) {
           event_.cali = true;
           RCLCPP_INFO(get_logger(), "[FSM] 无需校准, cali 直接置位");
-      }
+        }
 
         // ── onEnter：进入时的一次性初始化 ──────────────────────
         fsm_->onEnter(JFSMode::ZEROTAU, [this] {
@@ -208,6 +211,111 @@ private:
 
     void jointReset() {
         // TODO: 多阶段腿部复位
+        robot_.updateBodyPose(imu_state_->getRPY(),
+                              imu_state_->getGyroscope(),
+                              imu_state_->getAccelerometer());
+        robot_.updateAllJointState(*joints_state_);
+
+        std::array<float, 2> phi1, phi4, phi0, L0;
+        phi1[0] = robot_.getHipJoints()[0].q;
+        phi4[0] = robot_.getHipJoints()[1].q;
+        phi1[1] = robot_.getHipJoints()[2].q;
+        phi4[1] = robot_.getHipJoints()[3].q;
+        robot_.forwardKinematics(phi1, phi4, phi0, L0, true);
+
+        static bool ifInit = false;
+        static std::array<float, 2>set_phi0{}, set_L0{};
+        if(ifInit != true){
+            ifInit = true;
+            set_phi0[0] = phi0[0];
+            set_phi0[1] = phi0[1];
+            set_L0[0] = L0[0];
+            set_L0[1] = L0[1];
+        }
+
+        auto& jfsm_cfg = config_manager_->getControllerParams().jfsm;
+
+        std::array<float, 2> set_phi1{}, set_phi4{};
+        if(robot_.getBodyWorldFrame().rpy[0] <  0.1 &&
+           robot_.getBodyWorldFrame().rpy[0] > -0.1){
+            for(int i =0 ; i < 2; i++){
+                if(set_phi0[i] > -(2*PI - jfsm_cfg.reset.state_up.phi0)){
+                    set_phi0[i] -= jfsm_cfg.reset.leg_phi0_step; 
+                }else{    
+                    set_L0[i] = 0.126;
+                    continue;
+                }
+                if(set_L0[i] < jfsm_cfg.reset.state_up.l0){
+                    set_L0[i] += jfsm_cfg.reset.leg_l0_step;
+                }
+            }
+
+            constexpr float EPS = 1e-4f;
+
+            if(std::fabs(set_L0[0] - 0.126f) < EPS &&
+               std::fabs(set_L0[1] - 0.126f) < EPS)
+            {
+                ifInit = false;
+                fsm_->trigger("ready");
+            }
+        }else{
+            for(int i =0 ; i < 2; i++){
+                if(set_phi0[i] > jfsm_cfg.reset.state_down.phi0){
+                    set_phi0[i] -= jfsm_cfg.reset.leg_phi0_step; 
+                }else if(set_phi0[0] <= jfsm_cfg.reset.state_down.phi0 && 
+                         set_phi0[1] <= jfsm_cfg.reset.state_down.phi0){
+                    set_phi0[i] -= jfsm_cfg.reset.leg_phi0_step; 
+                }
+                if(set_L0[i] < jfsm_cfg.reset.state_up.l0){
+                    set_L0[i] += jfsm_cfg.reset.leg_l0_step;
+                }
+            }
+        }
+
+
+        robot_.inverseKinematics(set_phi0, set_L0, set_phi1, set_phi4);
+        // for(int i = 0; i < 2; i++){
+        //     RCLCPP_INFO(get_logger(), "[IK input] i=%d phi0=%.4f L0=%.4f set_phi0=%.4f set_L0=%.4f",
+        //              i, phi0[i], L0[i], set_phi0[i], set_L0[i]);
+        //     RCLCPP_INFO(get_logger(), "[IK output] i=%d set_phi1=%.4f set_phi4=%.4f",
+        //             i, set_phi1[i], set_phi4[i]);   
+        // }
+
+        std::array<float, 6> jp = {
+            set_phi1[0], set_phi4[0], 0.0, 
+            set_phi1[1], set_phi4[1], 0.0
+        };
+        std::array<float, 6> jv = {0};
+        std::array<float, 6> jt = {0};
+        std::array<float, 6> jkp = {
+            20, 20, 0,
+            20, 20, 0,
+        };
+        std::array<float, 6> jkd = {
+            3, 3 ,0,
+            3, 3, 0
+        };
+
+        for (int i = 0; i < 6; ++i) {
+            jp[i] = (robot_.getConfig().joints[i].invert_pos     ? -1 : 1)
+                    * (jp[i] - robot_.getConfig().joints[i].pos_offset);
+            jv[i] = (robot_.getConfig().joints[i].invert_vel     ? -1 : 1) * jv[i];
+            jt[i] = (robot_.getConfig().joints[i].invert_torque  ? -1 : 1) * jt[i];
+
+            float d_jp = jp[i] - joints_state_->getPosition(i);
+            d_jp = std::fmod(d_jp + PI, 2*PI);
+            if(d_jp < 0){d_jp += 2*PI;}
+            d_jp -= PI; 
+            jp[i] = joints_state_->getPosition(i) + d_jp;
+
+
+            joints_cmd_->setMode(i, JointCmdInterface::MODE_MIT);
+            joints_cmd_->setPosition(i, jp[i]);
+            joints_cmd_->setVelocity(i, jv[i]);
+            joints_cmd_->setEffort(i, jt[i]);
+            joints_cmd_->setKp(i, jkp[i]);
+            joints_cmd_->setKd(i, jkd[i]);
+        }
     }
 
     void jointReady(double dt) {
@@ -282,14 +390,14 @@ private:
 
         
         std::array<float, 2> set_Tp, set_F, set_T, set_tA, set_tE;
-        std::cout<<"========================="<<std::endl;
+        // std::cout<<"========================="<<std::endl;
         for (int i = 0; i < 2; ++i) {
             set_Tp[i] = lqr_u[i](1) + leg_u.compensation_tp[i];
             set_F[i]  = leg_u.F[i];
             set_T[i]  = lqr_u[i](0) + rotate_u[i];
-            std::cout << "lqr_u[i](0):" << lqr_u[i](0) << std::endl;
-            std::cout << "rotate_u[i]:" << rotate_u[i] << std::endl;
-            std::cout << "set_T[i]:" << set_T[i] << std::endl;
+            // std::cout << "lqr_u[i](0):" << lqr_u[i](0) << std::endl;
+            // std::cout << "rotate_u[i]:" << rotate_u[i] << std::endl;
+            // std::cout << "set_T[i]:" << set_T[i] << std::endl;
         }
         robot_.inverseDynamics(set_Tp, set_F, set_tA, set_tE);
 
@@ -299,8 +407,8 @@ private:
             set_tE[i] = std::clamp(set_tE[i], -50.0f, 50.0f);
             set_T[i]  = std::clamp(set_T[i],   -5.0f,  5.0f);
         }
-        std::cout << "set_T[i]:" << set_T[0] << " "<< set_T[1]<< std::endl;
-        std::cout<<"========================="<<std::endl;
+        // std::cout << "set_T[i]:" << set_T[0] << " "<< set_T[1]<< std::endl;
+        // std::cout<<"========================="<<std::endl;
         std::array<float, 6> jp = {0};
         std::array<float, 6> jv = {0};
         // std::array<float, 6> jt = {0};
