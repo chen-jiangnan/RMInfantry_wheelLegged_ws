@@ -32,10 +32,15 @@ struct CaliConfig {
 };
 
 struct ResetConfig {
-    float target_leg_length    = 0.20f;
-    float target_leg_angle     = 0.0f;
-    float max_velocity         = 0.3f;
-    float position_tolerance   = 0.01f;
+    struct state{
+        float l0   = 0.395f;
+        float phi0 = 2.416f;
+    };
+    state state_up   = {0.395f, 2.416f};
+    state state_down = {0.395f, 2.416f};
+
+    float leg_l0_step   = 0.005f;
+    float leg_phi0_step = 0.001f;
 };
 
 struct JFSMConfig {
