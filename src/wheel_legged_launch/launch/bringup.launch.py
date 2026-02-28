@@ -79,5 +79,5 @@ def generate_launch_description():
         sub_launch('user_control.launch.py'),
 
         # 工具
-        sub_launch('display.launch.py'),
+        # sub_launch('display.launch.py'),
     ])

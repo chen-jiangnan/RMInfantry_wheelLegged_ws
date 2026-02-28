@@ -26,14 +26,18 @@ chassis_control_node:
 
       # reset 策略
       reset:
-        # 目标腿长 (m)
-        target_leg_length: 0.20
-        # 目标腿角 (rad)
-        target_leg_angle: 0.0
-        # 运动到目标位置的最大速度
-        max_velocity: 0.3
-        # 认为reset完成的误差阈值
-        position_tolerance: 0.01
+        # 周期内步进腿长 (m)
+        leg_l0_step: 0.005
+        # 周期内步进目标腿角 (rad)
+        leg_phi0_step: 0.001
+        # 底盘正面朝上状态
+        state_up:
+          l0: 0.395
+          phi0: 2.416
+        # 底盘低面朝上状态
+        state_down:
+          l0: 0.395
+          phi0: -0.008          
 
     # ==================== LQR控制器 ====================
     lqr:
