@@ -160,15 +160,27 @@ void WheelLeggedRobot::inverseKinematics(
         float L3 = config_.hip_joint_distance;
         float L1 = config_.thigh_link[i].lengthOrRadius;
         float L2 = config_.shank_link[i].lengthOrRadius;
-        // step1:
-        float LB = std::sqrt(L0[i]*L0[i] + (L3/2)*(L3/2) - L0[i]*L3*std::cos(phi0[i])); 
-        float LD = std::sqrt(L0[i]*L0[i] + (L3/2)*(L3/2) - L0[i]*L3*std::cos(PI - phi0[i]));
-        // step2:
-        float phiA = std::acos( ((L3/2)*(L3/2) + LB*LB - L0[i]*L0[i])/(L3*LB)) + std::acos( (LB*LB + L1*L1 - L2*L2)/(2*LB*L1) ); 
-        float phiE = std::acos( ((L3/2)*(L3/2) + LD*LD - L0[i]*L0[i])/(L3*LD)) + std::acos( (LD*LD + L1*L1 - L2*L2)/(2*LD*L1) );
-        // step4:
-        phi1[i] = PI - phiA;
-        phi4[i] = phiE;
+        if(L3 != 0.0f){
+            // step1:
+            float LB = std::sqrt(L0[i]*L0[i] + (L3/2)*(L3/2) - L0[i]*L3*std::cos(phi0[i])); 
+            float LD = std::sqrt(L0[i]*L0[i] + (L3/2)*(L3/2) - L0[i]*L3*std::cos(PI - phi0[i]));
+            // step2:
+            float phiA = std::acos( ((L3/2)*(L3/2) + LB*LB - L0[i]*L0[i])/(L3*LB)) + std::acos( (LB*LB + L1*L1 - L2*L2)/(2*LB*L1) ); 
+            float phiE = std::acos( ((L3/2)*(L3/2) + LD*LD - L0[i]*L0[i])/(L3*LD)) + std::acos( (LD*LD + L1*L1 - L2*L2)/(2*LD*L1) );
+            // step4:
+            phi1[i] = PI - phiA;
+            phi4[i] = phiE;
+        }else{
+            float angle_A = std::acos((L0[i]*L0[i] + L1*L1 - L2*L2) / (2*L0[i]*L1) );
+            if(phi0[0] > 0){
+                phi1[i] = phi0[i] - angle_A;
+                phi4[i] = phi0[i] + angle_A;
+            }else{
+                phi1[i] = 2*PI + phi0[i] - angle_A;
+                phi4[i] = 2*PI + phi0[i] + angle_A;
+            }
+
+        }
     } 
 }
 
