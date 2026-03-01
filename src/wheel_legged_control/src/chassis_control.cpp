@@ -251,7 +251,6 @@ private:
             }
 
             constexpr float EPS = 1e-4f;
-
             if(std::fabs(set_L0[0] - 0.126f) < EPS &&
                std::fabs(set_L0[1] - 0.126f) < EPS)
             {
@@ -287,9 +286,10 @@ private:
         };
         std::array<float, 6> jv = {0};
         std::array<float, 6> jt = {0};
+        // std::array<float, 6> jkp = {0};
         std::array<float, 6> jkp = {
-            20, 20, 0,
-            20, 20, 0,
+            10, 10, 0,
+            10, 10, 0,
         };
         std::array<float, 6> jkd = {
             3, 3 ,0,
@@ -307,7 +307,6 @@ private:
             if(d_jp < 0){d_jp += 2*PI;}
             d_jp -= PI; 
             jp[i] = joints_state_->getPosition(i) + d_jp;
-
 
             joints_cmd_->setMode(i, JointCmdInterface::MODE_MIT);
             joints_cmd_->setPosition(i, jp[i]);
@@ -411,11 +410,11 @@ private:
         // std::cout<<"========================="<<std::endl;
         std::array<float, 6> jp = {0};
         std::array<float, 6> jv = {0};
-        // std::array<float, 6> jt = {0};
-        std::array<float, 6> jt = {
-            set_tA[0], set_tE[0], set_T[0],
-            set_tA[1], set_tE[1], set_T[1]
-        };
+        std::array<float, 6> jt = {0};
+        // std::array<float, 6> jt = {
+        //     set_tA[0], set_tE[0], set_T[0],
+        //     set_tA[1], set_tE[1], set_T[1]
+        // };
 
         for (int i = 0; i < 6; ++i) {
             jp[i] = (robot_.getConfig().joints[i].invert_pos     ? -1 : 1)
