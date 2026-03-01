@@ -38,6 +38,18 @@ HardwareBrigeNode(std::string name):Node(name){
     dm_tools_ = std::make_unique<DMTools>(DEV_USB2CANFD);
     dm_tools_->openChannel();
 
+    // ==================== 初始化电机 ====================
+    wheel_motor_group_ = std::make_unique<MotorGroupSender>(*dm_tools_, 0, 0x1FF);
+    wheel_motors_.push_back(std::make_shared<M3508Motor>(0x05, *wheel_motor_group_, *dm_tools_, 268.0/17.0, true));
+    wheel_motors_.push_back(std::make_shared<M3508Motor>(0x06, *wheel_motor_group_, *dm_tools_, 268.0/17.0, true));
+    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x01, 0x11, *dm_tools_, DM8009, MIT_MODE));
+    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x02, 0x12, *dm_tools_, DM8009, MIT_MODE));
+    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x03, 0x13, *dm_tools_, DM8009, MIT_MODE));
+    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x04, 0x14, *dm_tools_, DM8009, MIT_MODE));
+    for(int i = 0; i < 4; i++){
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      hip_motors_[i]->enable();
+    }    
 
     // ==================== 初始化IMU ====================
     imu_ = std::make_unique<HipnucImu>(imu_port, imu_baud);
@@ -47,28 +59,6 @@ HardwareBrigeNode(std::string name):Node(name){
       throw std::runtime_error("IMU初始化失败");
     }
 
-    // ==================== 初始化电机 ====================
-    wheel_motor_group_ = std::make_unique<MotorGroupSender>(*dm_tools_, 0, 0x200);
-    wheel_motors_.push_back(std::make_shared<M3508Motor>(0x01, *wheel_motor_group_, *dm_tools_, 268.0/17.0, true));
-    wheel_motors_.push_back(std::make_shared<M3508Motor>(0x02, *wheel_motor_group_, *dm_tools_, 268.0/17.0, true));
-    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x01, 0x11, *dm_tools_, DM8009, MIT_MODE));
-    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x02, 0x12, *dm_tools_, DM8009, MIT_MODE));
-    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x03, 0x13, *dm_tools_, DM8009, MIT_MODE));
-    hip_motors_.push_back(std::make_shared<DamiaoMotor>(0x04, 0x14, *dm_tools_, DM8009, MIT_MODE));
-    for(int i = 0; i < 4; i++){
-      hip_motors_[i]->enable();
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-
-    // 注册IMU回调
-    imu_->setDataCallback([this](const HipnucData& data) {
-        this->imuStatePubCallback(data);
-    });
-  
-    imu_->start();
-    RCLCPP_INFO(this->get_logger(), "IMU已启动");
-
-    
     // ============= 创建 low level control接口 ==============
     chassis_joints_state_ = std::make_unique<JointStateInterface>(6, JointStateInterface::MODE_IDLE);
     chassis_joints_cmd_ = std::make_unique<JointCmdInterface>(6, JointCmdInterface::MODE_IDLE);
@@ -85,21 +75,41 @@ HardwareBrigeNode(std::string name):Node(name){
     chassis_timer_ = this->create_wall_timer(
       std::chrono::milliseconds(1),  std::bind(&HardwareBrigeNode::chassisJointStatePubCallback, this));
 
-    // ==================== 创建控制线程 ====================
+    //==================== 创建控制线程 ====================
     control_thread_ = std::thread(&HardwareBrigeNode::motorControlLoop, this);
+
+    // 注册IMU回调
+    imu_->setDataCallback([this](const HipnucData& data) {
+      this->imuStatePubCallback(data);
+    });
+    imu_->start();
+    RCLCPP_INFO(this->get_logger(), "IMU已启动");
+    
    }
 
    ~HardwareBrigeNode() {
-    if (control_thread_.joinable()) {
-      control_thread_.join();
-    }
-    for(int i = 0; i < 4; i++){
-      hip_motors_[i]->disable();
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+      // ---- 第一步：停止所有主动产生任务的来源 ----
+      // 1. 停止控制线程（不再向电机发指令）
+      if (control_thread_.joinable()) {
+        control_thread_.join();
+      }
 
-    if (imu_) { imu_->stop();}
-    dm_tools_->closeChannel();
+      // 2. 停止定时器（不再触发 chassisJointStatePubCallback）
+      chassis_timer_.reset();
+
+      // 3. 停止 IMU 接收线程（不再触发 imuStatePubCallback）
+      if (imu_) { imu_->stop(); }
+
+      // ---- 第二步：安全关闭电机 ----
+      for (int i = 0; i < 4; i++) {
+          hip_motors_[i]->disable();
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+
+      // ---- 第三步：清空电机对象（内部会 removeRecvRoute，dm_tools_ 此时仍有效）----
+      hip_motors_.clear();
+      wheel_motors_.clear();
+      wheel_motor_group_.reset();
   }
 private:
 
@@ -109,22 +119,22 @@ private:
       auto msg = wheel_legged_msgs::msg::IMUState();
     
       msg.header.stamp = this->now();
-      msg.header.frame_id = "base_link";
+      msg.header.frame_id = "chassis_imu";
   
       msg.quaternion[0] = data.quat[0]; // w x y z
       msg.quaternion[1] = data.quat[1]; // w x y z
       msg.quaternion[2] = data.quat[2]; // w x y z
       msg.quaternion[3] = data.quat[3]; // w x y z
   
-      msg.gyroscope[0] = data.gyro[0]; 
-      msg.gyroscope[1] = data.gyro[1];
-      msg.gyroscope[2] = data.gyro[2];
+      msg.gyroscope[0] = -data.gyro[0]; 
+      msg.gyroscope[1] =  data.gyro[1];
+      msg.gyroscope[2] =  data.gyro[2];
   
-      msg.accelerometer[0] = data.gyro[0]; 
-      msg.accelerometer[1] = data.gyro[1];
-      msg.accelerometer[2] = data.gyro[2];
+      msg.accelerometer[0] = -data.acc[0]; 
+      msg.accelerometer[1] = data.acc[1];
+      msg.accelerometer[2] = data.acc[2];
   
-      msg.rpy[0] = data.rpy[0];
+      msg.rpy[0] = -data.rpy[0];
       msg.rpy[1] = data.rpy[1];
       msg.rpy[2] = data.rpy[2];
       imu_state_pub_->publish(msg);
@@ -132,6 +142,36 @@ private:
   }
 
   void chassisJointStatePubCallback(){
+
+    for(int i = 0; i < 2; i++){
+
+      float front_jp = hip_motors_[1 + i*2]->getState().position;
+      float front_jv = hip_motors_[1 + i*2]->getState().velocity;
+      float front_jt = hip_motors_[1 + i*2]->getState().torque;
+
+      float rear_jp = hip_motors_[0 + i*2]->getState().position;
+      float rear_jv = hip_motors_[0 + i*2]->getState().velocity;
+      float rear_jt = hip_motors_[0 + i*2]->getState().torque;
+
+      float wheel_jp = wheel_motors_[0 + i]->getState().position;
+      float wheel_jv = wheel_motors_[0 + i]->getState().velocity;
+      float wheel_jt = wheel_motors_[0 + i]->getState().torque;
+
+      chassis_joints_state_->setMode(0 + i*3, wheel_legged_interfaces::JointStateInterface::MODE_MIT);
+      chassis_joints_state_->setPosition(0 + i*3, front_jp);
+      chassis_joints_state_->setVelocity(0 + i*3, front_jv);
+      chassis_joints_state_->setEffort(0 + i*3,   front_jt);
+
+      chassis_joints_state_->setMode(1 + i*3, wheel_legged_interfaces::JointStateInterface::MODE_MIT);
+      chassis_joints_state_->setPosition(1 + i*3, rear_jp);
+      chassis_joints_state_->setVelocity(1 + i*3, rear_jv);
+      chassis_joints_state_->setEffort(1 + i*3, rear_jt);
+
+      chassis_joints_state_->setMode(2 + i*3, wheel_legged_interfaces::JointStateInterface::MODE_EFFORT);
+      chassis_joints_state_->setPosition(2 + i*3, wheel_jp);
+      chassis_joints_state_->setVelocity(2 + i*3, wheel_jv);
+      chassis_joints_state_->setEffort(2 + i*3, wheel_jt);
+    }
     auto msgs = chassis_joints_state_->toMsgs();
     chassis_joints_state_pub_->publish(msgs);
   }
@@ -142,33 +182,74 @@ private:
   void motorControlLoop(){
 
     while(rclcpp::ok()){
-      wheel_motors_[0]->setTorque(0.1);
-      wheel_motors_[1]->setTorque(0.1);
+      
+      float left_wheel_jt  = chassis_joints_cmd_->getEffort(2 + 0*3);
+      float right_wheel_jt = chassis_joints_cmd_->getEffort(2 + 1*3);
+      wheel_motors_[0]->setTorque(left_wheel_jt);
+      wheel_motors_[1]->setTorque(right_wheel_jt);
       wheel_motor_group_->send();
+      for(int i = 0; i < 2; i++){
+
+        float front_jp = chassis_joints_cmd_->getPosition(0 + i*3);
+        float front_jv = chassis_joints_cmd_->getVelocity(0 + i*3);
+        float front_jt = chassis_joints_cmd_->getEffort(0 + i*3);
+        float front_kp = chassis_joints_cmd_->getKp(0 + i*3);
+        float front_kd = chassis_joints_cmd_->getKd(0 + i*3);
+
+        float rear_jp = chassis_joints_cmd_->getPosition(1 + i*3);
+        float rear_jv = chassis_joints_cmd_->getVelocity(1 + i*3);
+        float rear_jt = chassis_joints_cmd_->getEffort(1 + i*3);
+        float rear_kp = chassis_joints_cmd_->getKp(1 + i*3);
+        float rear_kd = chassis_joints_cmd_->getKd(1 + i*3);
+
+        // float front_jp = 0;
+        // float front_jv = 0;
+        // float front_jt = 0;
+        // float front_kp = 0;
+        // float front_kd = 0;
+
+        // float rear_jp = 0;
+        // float rear_jv = 0;
+        // float rear_jt = 0;
+        // float rear_kp = 0;
+        // float rear_kd = 0;
+
+
+        hip_motors_[1 + i*2]->controlMIT(front_kp, front_kd, front_jp, front_jv, front_jt);
+        // std::this_thread::sleep_for(std::chrono::microseconds(2));
+        hip_motors_[0 + i*2]->controlMIT( rear_kp,  rear_kd,  rear_jp,  rear_jv,  rear_jt);
+        // std::this_thread::sleep_for(std::chrono::microseconds(2));
+        
+      }
+      // std::this_thread::sleep_for(std::chrono::microseconds(2000));
+      
       std::this_thread::sleep_for(std::chrono::microseconds(2000));
     }
   }
 
-  // ==================== 成员变量 ====================
-  std::unique_ptr<DMTools> dm_tools_;
-  std::unique_ptr<HipnucImu> imu_;
-  std::unique_ptr<MotorGroupSender> wheel_motor_group_;
-  std::vector<std::shared_ptr<M3508Motor>>  wheel_motors_;
-  std::vector<std::shared_ptr<DamiaoMotor>> hip_motors_;
-  // std::vector<dji::WheelMotors> wheel_motors_;
+    // ==================== 成员变量声明顺序 ====================
+    // 声明顺序决定析构顺序（反向析构）
+    // 原则：被依赖的对象必须最后声明（最先析构）
+    //
+    // 析构顺序（反向）：
+    //   control_thread_ → chassis_timer_ → ROS发布订阅
+    //   → chassis_joints → imu_
+    //   → hip_motors_ → wheel_motors_ → wheel_motor_group_
+    //   → dm_tools_  ← 最后析构，此时所有 removeRecvRoute 已完成
 
-  // std::unique_ptr<IMUStateInterface> imu_state_;
-  std::unique_ptr<JointStateInterface> chassis_joints_state_;
-  std::unique_ptr<JointCmdInterface> chassis_joints_cmd_;
+    rclcpp::TimerBase::SharedPtr                                   chassis_timer_;
+    rclcpp::Publisher<wheel_legged_msgs::msg::IMUState>::SharedPtr imu_state_pub_;
+    rclcpp::Publisher<wheel_legged_msgs::msg::JointStates>::SharedPtr chassis_joints_state_pub_;
+    rclcpp::Subscription<wheel_legged_msgs::msg::JointCmds>::SharedPtr chassis_joints_cmd_sub_;
+    std::unique_ptr<JointStateInterface>                           chassis_joints_state_;
+    std::unique_ptr<JointCmdInterface>                             chassis_joints_cmd_;
+    std::unique_ptr<HipnucImu>                                     imu_;
+    std::vector<std::shared_ptr<DamiaoMotor>>                      hip_motors_;
+    std::vector<std::shared_ptr<M3508Motor>>                       wheel_motors_;
+    std::unique_ptr<MotorGroupSender>                              wheel_motor_group_;
+    std::unique_ptr<DMTools>                                       dm_tools_;  // ← 最后声明，最先析构
+    std::thread                                                    control_thread_;
 
-  // ROS2
-  rclcpp::Publisher<wheel_legged_msgs::msg::IMUState>::SharedPtr imu_state_pub_;
-  rclcpp::Publisher<wheel_legged_msgs::msg::JointStates>::SharedPtr chassis_joints_state_pub_;
-  rclcpp::Subscription<wheel_legged_msgs::msg::JointCmds>::SharedPtr chassis_joints_cmd_sub_;
-  rclcpp::TimerBase::SharedPtr chassis_timer_;
-
-  /*控制线程*/
-  std::thread control_thread_;
 };
 
 int main(int argc, char ** argv){
