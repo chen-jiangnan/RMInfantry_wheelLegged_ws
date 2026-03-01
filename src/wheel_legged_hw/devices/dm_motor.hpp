@@ -69,6 +69,13 @@ public:
 
     void controlMIT(float kp, float kd, float pos, float vel, float tau) {
         using namespace utils;
+        
+        pos = std::clamp(pos, -limit_.Q_MAX,  limit_.Q_MAX);
+        vel = std::clamp(vel, -limit_.DQ_MAX, limit_.DQ_MAX);
+        tau = std::clamp(tau, -limit_.TAU_MAX, limit_.TAU_MAX);
+        kp  = std::clamp(kp,  0.f, 500.f);
+        kd  = std::clamp(kd,  0.f, 5.f);
+    
         uint16_t kp_u=f2u(kp,0,500,12), kd_u=f2u(kd,0,5,12);
         uint16_t p_u=f2u(pos,-limit_.Q_MAX,limit_.Q_MAX,16);
         uint16_t v_u=f2u(vel,-limit_.DQ_MAX,limit_.DQ_MAX,12);
