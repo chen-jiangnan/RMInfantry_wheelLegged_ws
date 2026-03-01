@@ -105,7 +105,9 @@ private:
             msg.joint_states.resize(n_chassis);
             for (int i = 0; i < n_chassis; ++i) {
                 auto& s = g_sim_data.motor_state[i];
-                msg.joint_states[i].q   = static_cast<float>(s.q.load(std::memory_order_relaxed));
+                double q = s.q.load(std::memory_order_relaxed);
+                double wrapped = std::remainder(q, 25.0);
+                msg.joint_states[i].q = static_cast<float>(wrapped);
                 msg.joint_states[i].dq  = static_cast<float>(s.dq.load(std::memory_order_relaxed));
                 msg.joint_states[i].tau = static_cast<float>(s.tau.load(std::memory_order_relaxed));
             }
