@@ -92,13 +92,13 @@ public:
     }
 
     ~DMTools() {
-        for (uint8_t ch = 0; ch < 2; ++ch)
-            if (ch_open_[ch]) device_close_channel(dev_, ch);
+        instance_ = nullptr;
         device_hook_to_rec(dev_, nullptr);
         device_hook_to_err(dev_, nullptr);
+        for (uint8_t ch = 0; ch < 2; ++ch)
+            if (ch_open_[ch]) device_close_channel(dev_, ch);
         device_close(dev_);
         damiao_handle_destroy(handle_);
-        instance_ = nullptr;
     }
 
     DMTools(const DMTools&)            = delete;
