@@ -2,7 +2,7 @@
 set -e
 
 # 默认值
-ROBOT_TYPE="cyclBot"
+ROBOT_TYPE="seriBot"
 ENV_MODE="sim"
 
 # 解析命令行参数
@@ -29,6 +29,6 @@ echo "Run mode: $ENV_MODE"
 # source workspace
 source install/setup.bash
 
-# 选择 launch 文件或传参
-ros2 launch wheel_legged_control full_system_launch.py \
-    robot_type:=$ROBOT_TYPE run_mode:=$ENV_MODE
+# 启动
+ros2 launch wheel_legged_launch bringup.launch.py \
+    robot_type:=$ROBOT_TYPE env_mode:=$ENV_MODE
