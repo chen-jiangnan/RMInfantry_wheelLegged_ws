@@ -13,7 +13,8 @@ enum class JFSMode {
     CALI,
     DAMPING,
     RESET,
-    READY
+    READY,
+    NONE=0xFF
 };
 // 模式值到触发字符串的映射
 static const std::unordered_map<uint8_t, std::string> kFSMTriggerMap = {
@@ -22,6 +23,7 @@ static const std::unordered_map<uint8_t, std::string> kFSMTriggerMap = {
     {2, "damping"},
     {3, "reset"},
     {4, "ready"},
+    {0xFF, ""},// ← NONE，底层收到后 find 不到有效触发，不做任何切换
 };
 // JFSM 配置用于config_manager
 struct CaliConfig {

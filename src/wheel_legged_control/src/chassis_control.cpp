@@ -70,7 +70,7 @@ public:
             [this](wheel_legged_msgs::msg::ChassisCtrl::SharedPtr msg) {
                 // FSM 状态切换
                 auto it = kFSMTriggerMap.find(msg->joint_fsm_mode);
-                if (it != kFSMTriggerMap.end()) {
+                if (it != kFSMTriggerMap.end() && !it->second.empty() ) {
                     fsm_->trigger(it->second);
                 }
                 chassis_ctrl_->fromMsg(*msg);
@@ -141,6 +141,8 @@ private:
             // 进入 READY 前先确保控制器状态干净
             // （通常从 RESET 来，RESET 的 onExit 已经清过了，这里保险起见再清一次）
             clearControllers();
+            state_estimator_.corverVelocityEstimate(
+                chassis_ctrl_->getPosition(), chassis_ctrl_->getVelocity());
         });
 
         // ── onExit：离开时的清理 ────────────────────────────────
@@ -148,10 +150,14 @@ private:
             // 退出 READY 时重置控制器，防止残留积分/历史影响下一次进入
             RCLCPP_INFO(get_logger(), "[FSM] READY exit → 重置控制器");
             clearControllers();
+            state_estimator_.corverVelocityEstimate(
+                chassis_ctrl_->getPosition(), chassis_ctrl_->getVelocity());
         });
 
         fsm_->onExit(JFSMode::RESET, [this] {
             RCLCPP_INFO(get_logger(), "[FSM] RESET exit → 重置控制器");
+            state_estimator_.corverVelocityEstimate(
+                chassis_ctrl_->getPosition(), chassis_ctrl_->getVelocity());
             clearControllers();
         });
     }
@@ -287,6 +293,7 @@ private:
         std::array<float, 6> jv = {0};
         std::array<float, 6> jt = {0};
         // std::array<float, 6> jkp = {0};
+        // std::array<float, 6> jkd = {0};
         std::array<float, 6> jkp = {
             10, 10, 0,
             10, 10, 0,
@@ -307,6 +314,22 @@ private:
             if(d_jp < 0){d_jp += 2*PI;}
             d_jp -= PI; 
             jp[i] = joints_state_->getPosition(i) + d_jp;
+
+            // if(jp[i] >=  12.0 ||
+            //     jp[i] <= -12.0){
+            //     if(i > 2){
+            //         jkp[i] = 0; jv[i] = 5.0;
+            //         std::cout << "test2" << std::endl;
+            //          // set_phi0[1] = phi0[1];
+            //         // set_L0[1] = L0[1];
+            //     }
+            //     else{
+            //         std::cout << "test1" << std::endl;
+            //         jkp[i] = 0; jv[i] = -5.0;
+            //         // set_phi0[0] = phi0[0];
+            //         // set_L0[0] = L0[0];
+            //     }
+            // }
 
             joints_cmd_->setMode(i, JointCmdInterface::MODE_MIT);
             joints_cmd_->setPosition(i, jp[i]);
@@ -329,6 +352,8 @@ private:
         phi1[1] = robot_.getHipJoints()[2].q;
         phi4[1] = robot_.getHipJoints()[3].q;
         robot_.forwardKinematics(phi1, phi4, phi0, L0, true);
+
+        if(phi0[0] < 0 || phi0[1] < 0){fsm_->trigger("zerotau");}
 
         std::array<float, 2> tA, tE, Tp, F;
         tA[0] = robot_.getHipJoints()[0].tau;
@@ -375,7 +400,8 @@ private:
         }
         auto lqr_u = lqr_controller_.calculate(xd, x);
 
-        std::array<float, 2> target_L0 = {0.20f, 0.20f};
+        std::array<float, 2> target_L0 = {
+            chassis_ctrl_->getLegLength(0), chassis_ctrl_->getLegLength(1)};
         auto leg_u = leg_controller_.calculate(
             target_L0, L0, 0,
             robot_.getBodyWorldFrame().rpy[0],
@@ -410,11 +436,11 @@ private:
         // std::cout<<"========================="<<std::endl;
         std::array<float, 6> jp = {0};
         std::array<float, 6> jv = {0};
-        std::array<float, 6> jt = {0};
-        // std::array<float, 6> jt = {
-        //     set_tA[0], set_tE[0], set_T[0],
-        //     set_tA[1], set_tE[1], set_T[1]
-        // };
+        // std::array<float, 6> jt = {0};
+        std::array<float, 6> jt = {
+            set_tA[0], set_tE[0], set_T[0],
+            set_tA[1], set_tE[1], set_T[1]
+        };
 
         for (int i = 0; i < 6; ++i) {
             jp[i] = (robot_.getConfig().joints[i].invert_pos     ? -1 : 1)
@@ -464,6 +490,7 @@ private:
                 case JFSMode::CALI:     jointCali();      break;
                 case JFSMode::RESET:    jointReset();     break;
                 case JFSMode::READY:    jointReady(dt);   break;
+                case JFSMode::NONE: break;
             }
 
             std::this_thread::sleep_for(

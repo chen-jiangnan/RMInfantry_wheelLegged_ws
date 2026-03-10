@@ -21,6 +21,7 @@ UserControlNode(std::string name):Node(name){
     joy_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(
         "/joy", 1, 
         [this](sensor_msgs::msg::Joy::SharedPtr msg) {
+          chassis_ctrl_->setMode(JFSMode::NONE);
           if(msg->buttons[3] == 1){chassis_ctrl_->setMode(JFSMode::READY);}       //Y
           if(msg->buttons[2] == 1){chassis_ctrl_->setMode(JFSMode::ZEROTAU);}     //X
           if(msg->buttons[6] == 1){chassis_ctrl_->setMode(JFSMode::RESET);}       //View Button
@@ -28,7 +29,10 @@ UserControlNode(std::string name):Node(name){
 
           for(int i = 0; i < 2; i++){
             static float l0 = 0.20;
-            l0 += msg->axes[0]*0.1;
+            if (chassis_ctrl_->getMode() != JFSMode::READY &&
+                chassis_ctrl_->getMode() != JFSMode::NONE ){l0 = 0.20;}
+            
+            l0 += msg->axes[7]*0.01;
             if (l0 > 0.395){l0 = 0.395;}
             if (l0 < 0.126){l0 = 0.126;}
             
