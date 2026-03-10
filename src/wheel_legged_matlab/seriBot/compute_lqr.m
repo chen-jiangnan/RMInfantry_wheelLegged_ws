@@ -344,7 +344,8 @@ if enable_fitting
 
             % 存储结果
             K_sample_1d(idx, 1) = Ll_fit;
-            K_sample_1d(idx, 2:13) = K_fit(:)';  % 按行展开
+             % K_sample_1d(idx, 2:13) = K_fit(:)';  % 按行展开
+            K_sample_1d(idx, 2:13) = reshape(K_fit', 1, []);  % 行优先展开
         catch
             warning('LQR计算失败: Ll=%.2f', Ll_fit);
         end
@@ -458,6 +459,36 @@ if enable_fitting
         end
     end
     fprintf('};\n\n');
+
+% ========== 输出 YAML 格式 ==========
+    fprintf('\n# YAML格式输出\n');
+    fprintf('      leg_fitting:\n');
+    fprintf('        enabled: true\n');
+    fprintf('        min_length: %.3f\n', min(Leg_data(:,1)));
+    fprintf('        max_length: %.3f\n', max(Leg_data(:,1)));
+    fprintf('        num_samples: %d\n',  num_legs);
+    fprintf('        polynomial: 2\n');
+    fprintf('\n');
+    fprintf('        # 12个元素 (2x6), 每个元素3个系数，总共36个值\n');
+    fprintf('        # 格式: [K[0][0].p1, K[0][0].p2, K[0][0].p3, ...]\n');
+    fprintf('        # [p1, p2, p3]\n');
+    fprintf('        coeffs: [\n');
+
+    for n = 1:12
+        row = ceil(n/6) - 1;
+        col = mod(n-1, 6);
+        p = K_Fit_Coefficients(n, :);
+
+        if n < 12
+            fprintf('          %12.6g, %12.6g, %12.6g,    # K[%d][%d]\n', ...
+                p(1), p(2), p(3), row, col);
+        else
+            fprintf('          %12.6g, %12.6g, %12.6g     # K[%d][%d]\n', ...
+                p(1), p(2), p(3), row, col);
+        end
+    end
+
+    fprintf('        ]\n');
 % 
 %     % 保存拟合结果
 %     save('lqr_fitting_results.mat', 'K_sample_2d', 'K_Fit_Coefficients', 'Leg_data');
