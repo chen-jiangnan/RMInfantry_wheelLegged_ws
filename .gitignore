@@ -10,6 +10,8 @@
 build/
 log/
 install/
+# ROS2Bag
+bags/
 
 *.asv
 
